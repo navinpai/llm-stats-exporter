@@ -37,8 +37,9 @@ class Collector:
         self.lookback_days = lookback_days
         self._snapshots: dict[str, Snapshot] = {}
 
-    def poll(self) -> None:
-        start, end = fetch_window(self.lookback_days)
+    def poll(self, now: datetime | None = None) -> None:
+        now = now or datetime.now(UTC)
+        start, end = fetch_window(self.lookback_days, now)
         for provider in self.providers:
             try:
                 self._snapshots[provider.name] = provider.fetch(start, end)
@@ -54,12 +55,12 @@ class Collector:
                 metrics.UP.labels(provider.name).set(0)
                 metrics.POLL_ERRORS.labels(provider.name).inc()
                 log.exception("Poll failed for %s (keeping last snapshot).", provider.name)
-        self._rebuild_metrics()
+        self._rebuild_metrics(now)
 
-    def _rebuild_metrics(self) -> None:
-        month = datetime.now(UTC).strftime("%Y-%m")
+    def _rebuild_metrics(self, now: datetime) -> None:
+        month = now.strftime("%Y-%m")
         daily_cutoff = (
-            datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+            now.replace(hour=0, minute=0, second=0, microsecond=0)
             - timedelta(days=self.lookback_days)
         ).strftime("%Y-%m-%d")
 
