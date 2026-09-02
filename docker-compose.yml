@@ -1,0 +1,11 @@
+services:
+  llm-stats-exporter:
+    build: .
+    ports:
+      - "9184:9184"
+    environment:
+      OPENAI_ADMIN_KEY: ${OPENAI_ADMIN_KEY:-}
+      ANTHROPIC_ADMIN_KEY: ${ANTHROPIC_ADMIN_KEY:-}
+      POLL_INTERVAL_SECONDS: "300"
+      LOOKBACK_DAYS: "2"
+    restart: unless-stopped

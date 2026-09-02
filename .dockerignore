@@ -1,0 +1,12 @@
+.git
+.venv
+tests
+deploy
+.github
+__pycache__
+*.egg-info
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.env
+docker-compose.yml
