@@ -3,6 +3,11 @@
 Secrets can be provided directly via an environment variable (e.g. from a
 Kubernetes Secret through ``secretKeyRef``) or via a ``*_FILE`` variant
 pointing at a file (e.g. a Secret mounted as a volume).
+
+Multiple accounts per provider are supported through named key variables:
+``OPENAI_ADMIN_KEY`` maps to the ``default`` account, while
+``OPENAI_ADMIN_KEY_PROD`` (or ``OPENAI_ADMIN_KEY_PROD_FILE``) maps to a
+``prod`` account. The name becomes the ``account`` metric label, lowercased.
 """
 
 from __future__ import annotations
@@ -34,6 +39,40 @@ def read_secret(env_name: str) -> str | None:
     return None
 
 
+@dataclass(frozen=True)
+class Account:
+    name: str
+    key: str
+
+
+def read_accounts(prefix: str) -> list[Account]:
+    """Resolve all accounts for a provider key prefix (e.g. OPENAI_ADMIN_KEY)."""
+    accounts: list[Account] = []
+    default_key = read_secret(prefix)
+    if default_key:
+        accounts.append(Account("default", default_key))
+
+    names: set[str] = set()
+    for env_name in os.environ:
+        if not env_name.startswith(f"{prefix}_"):
+            continue
+        suffix = env_name.removeprefix(f"{prefix}_")
+        if suffix == "FILE":  # the default account's _FILE variant
+            continue
+        suffix = suffix.removesuffix("_FILE")
+        if suffix:
+            names.add(suffix)
+    for name in sorted(names):
+        key = read_secret(f"{prefix}_{name}")
+        if key:
+            account_name = name.lower()
+            if account_name == "default" and default_key:
+                raise ConfigError(f"Account name 'default' in {prefix}_{name} clashes "
+                                  f"with the unnamed {prefix} key.")
+            accounts.append(Account(account_name, key))
+    return accounts
+
+
 def _read_int(env_name: str, default: int) -> int:
     raw = os.environ.get(env_name, "").strip()
     if not raw:
@@ -46,8 +85,8 @@ def _read_int(env_name: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Config:
-    openai_admin_key: str | None
-    anthropic_admin_key: str | None
+    openai_accounts: list[Account]
+    anthropic_accounts: list[Account]
     port: int
     poll_interval_seconds: int
     lookback_days: int
@@ -58,16 +97,17 @@ class Config:
 
     @classmethod
     def from_env(cls) -> Config:
-        openai_key = read_secret("OPENAI_ADMIN_KEY")
-        anthropic_key = read_secret("ANTHROPIC_ADMIN_KEY")
-        if not openai_key and not anthropic_key:
+        openai_accounts = read_accounts("OPENAI_ADMIN_KEY")
+        anthropic_accounts = read_accounts("ANTHROPIC_ADMIN_KEY")
+        if not openai_accounts and not anthropic_accounts:
             raise ConfigError(
                 "At least one provider key is required: set OPENAI_ADMIN_KEY[_FILE] "
-                "and/or ANTHROPIC_ADMIN_KEY[_FILE]."
+                "and/or ANTHROPIC_ADMIN_KEY[_FILE] (or named variants like "
+                "OPENAI_ADMIN_KEY_PROD)."
             )
         return cls(
-            openai_admin_key=openai_key,
-            anthropic_admin_key=anthropic_key,
+            openai_accounts=openai_accounts,
+            anthropic_accounts=anthropic_accounts,
             port=_read_int("EXPORTER_PORT", 9184),
             poll_interval_seconds=_read_int("POLL_INTERVAL_SECONDS", 300),
             lookback_days=_read_int("LOOKBACK_DAYS", 2),
