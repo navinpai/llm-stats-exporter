@@ -1,0 +1,14 @@
+# For the Prometheus Operator / kube-prometheus-stack.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: llm-stats-exporter
+  labels:
+    app.kubernetes.io/name: llm-stats-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: llm-stats-exporter
+  endpoints:
+    - port: metrics
+      interval: 60s
