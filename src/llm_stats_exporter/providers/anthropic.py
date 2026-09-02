@@ -62,8 +62,13 @@ def extract_tokens(result: dict[str, Any]) -> dict[str, float]:
 class AnthropicProvider(Provider):
     name = "anthropic"
 
-    def __init__(self, admin_key: str, api_base: str = "https://api.anthropic.com") -> None:
-        super().__init__()
+    def __init__(
+        self,
+        admin_key: str,
+        api_base: str = "https://api.anthropic.com",
+        account: str = "default",
+    ) -> None:
+        super().__init__(account)
         self.api_base = api_base.rstrip("/")
         self.session.headers.update({"x-api-key": admin_key, "anthropic-version": "2023-06-01"})
 

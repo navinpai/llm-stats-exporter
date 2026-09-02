@@ -35,26 +35,32 @@ class Collector:
         self.providers = providers
         self.pricing = pricing
         self.lookback_days = lookback_days
-        self._snapshots: dict[str, Snapshot] = {}
+        self._snapshots: dict[tuple[str, str], Snapshot] = {}
 
     def poll(self, now: datetime | None = None) -> None:
         now = now or datetime.now(UTC)
         start, end = fetch_window(self.lookback_days, now)
         for provider in self.providers:
+            key = (provider.name, provider.account)
             try:
-                self._snapshots[provider.name] = provider.fetch(start, end)
-                metrics.UP.labels(provider.name).set(1)
-                metrics.LAST_SUCCESS.labels(provider.name).set(time.time())
+                self._snapshots[key] = provider.fetch(start, end)
+                metrics.UP.labels(*key).set(1)
+                metrics.LAST_SUCCESS.labels(*key).set(time.time())
                 log.info(
-                    "Poll OK for %s: %d usage record(s), %d cost record(s).",
+                    "Poll OK for %s/%s: %d usage record(s), %d cost record(s).",
                     provider.name,
-                    len(self._snapshots[provider.name].usage),
-                    len(self._snapshots[provider.name].costs),
+                    provider.account,
+                    len(self._snapshots[key].usage),
+                    len(self._snapshots[key].costs),
                 )
             except Exception:
-                metrics.UP.labels(provider.name).set(0)
-                metrics.POLL_ERRORS.labels(provider.name).inc()
-                log.exception("Poll failed for %s (keeping last snapshot).", provider.name)
+                metrics.UP.labels(*key).set(0)
+                metrics.POLL_ERRORS.labels(*key).inc()
+                log.exception(
+                    "Poll failed for %s/%s (keeping last snapshot).",
+                    provider.name,
+                    provider.account,
+                )
         self._rebuild_metrics(now)
 
     def _rebuild_metrics(self, now: datetime) -> None:
@@ -71,7 +77,7 @@ class Collector:
         metrics.MONTHLY_ESTIMATED_COST.clear()
         metrics.MONTHLY_BILLED_COST.clear()
 
-        for provider_name, snapshot in self._snapshots.items():
+        for (provider_name, account), snapshot in self._snapshots.items():
             monthly_estimated: dict[tuple[str, str], float] = {}
             monthly_billed: dict[tuple[str, str], float] = {}
 
@@ -85,6 +91,7 @@ class Collector:
                     continue
                 labels = (
                     provider_name,
+                    account,
                     record.operation,
                     record.project_id,
                     record.project_name,
@@ -107,12 +114,19 @@ class Collector:
                 if cost.date < daily_cutoff or not cost.amount_usd:
                     continue
                 metrics.BILLED_COST.labels(
-                    provider_name, cost.project_id, cost.project_name, cost.line_item, cost.date
+                    provider_name,
+                    account,
+                    cost.project_id,
+                    cost.project_name,
+                    cost.line_item,
+                    cost.date,
                 ).set(cost.amount_usd)
 
             for (key_id, key_name), total in monthly_estimated.items():
-                metrics.MONTHLY_ESTIMATED_COST.labels(provider_name, key_id, key_name).set(total)
-            for (project_id, project_name), total in monthly_billed.items():
-                metrics.MONTHLY_BILLED_COST.labels(provider_name, project_id, project_name).set(
+                metrics.MONTHLY_ESTIMATED_COST.labels(provider_name, account, key_id, key_name).set(
                     total
                 )
+            for (project_id, project_name), total in monthly_billed.items():
+                metrics.MONTHLY_BILLED_COST.labels(
+                    provider_name, account, project_id, project_name
+                ).set(total)

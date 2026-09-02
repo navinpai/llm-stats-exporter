@@ -40,6 +40,7 @@ OLD_COST = CostRecord(
 
 USAGE_LABELS = {
     "provider": "fake",
+    "account": "default",
     "operation": "messages",
     "project_id": "ws_1",
     "project_name": "prod",
@@ -53,8 +54,8 @@ USAGE_LABELS = {
 class FakeProvider(Provider):
     name = "fake"
 
-    def __init__(self, snapshot: Snapshot) -> None:
-        super().__init__()
+    def __init__(self, snapshot: Snapshot, account: str = "default") -> None:
+        super().__init__(account)
         self.snapshot = snapshot
         self.fail = False
 
@@ -100,6 +101,7 @@ def test_poll_exports_daily_and_monthly_metrics(pricing):
             "llm_cost_usd",
             {
                 "provider": "fake",
+                "account": "default",
                 "project_id": "ws_1",
                 "project_name": "prod",
                 "line_item": "li",
@@ -117,17 +119,27 @@ def test_poll_exports_daily_and_monthly_metrics(pricing):
     # ... but they still count toward month-to-date totals (4.5 + 3.0, 5 + 7).
     assert sample(
         "llm_monthly_estimated_cost_usd",
-        {"provider": "fake", "api_key_id": "key_1", "api_key_name": "backend"},
+        {
+            "provider": "fake",
+            "account": "default",
+            "api_key_id": "key_1",
+            "api_key_name": "backend",
+        },
     ) == pytest.approx(7.5)
     assert (
         sample(
             "llm_monthly_cost_usd",
-            {"provider": "fake", "project_id": "ws_1", "project_name": "prod"},
+            {
+                "provider": "fake",
+                "account": "default",
+                "project_id": "ws_1",
+                "project_name": "prod",
+            },
         )
         == 12.0
     )
 
-    assert sample("llm_exporter_up", {"provider": "fake"}) == 1.0
+    assert sample("llm_exporter_up", {"provider": "fake", "account": "default"}) == 1.0
 
 
 def test_failed_poll_keeps_last_snapshot(pricing):
@@ -136,10 +148,25 @@ def test_failed_poll_keeps_last_snapshot(pricing):
     collector.poll(NOW)
 
     provider.fail = True
-    errors_before = sample("llm_exporter_poll_errors_total", {"provider": "fake"}) or 0.0
+    up_labels = {"provider": "fake", "account": "default"}
+    errors_before = sample("llm_exporter_poll_errors_total", up_labels) or 0.0
     collector.poll(NOW)
 
-    assert sample("llm_exporter_up", {"provider": "fake"}) == 0.0
-    assert sample("llm_exporter_poll_errors_total", {"provider": "fake"}) == errors_before + 1
+    assert sample("llm_exporter_up", up_labels) == 0.0
+    assert sample("llm_exporter_poll_errors_total", up_labels) == errors_before + 1
     # Series from the last good snapshot are still exported.
     assert sample("llm_usage_tokens", {**USAGE_LABELS, "token_type": "input"}) == 1_000_000.0
+
+
+def test_multiple_accounts_export_distinct_series(pricing):
+    default_account = FakeProvider(Snapshot(usage=[USAGE], costs=[]))
+    prod_account = FakeProvider(Snapshot(usage=[USAGE], costs=[]), account="prod")
+    collector = Collector([default_account, prod_account], pricing, lookback_days=2)
+    collector.poll(NOW)
+
+    assert sample("llm_usage_tokens", {**USAGE_LABELS, "token_type": "input"}) == 1_000_000.0
+    assert (
+        sample("llm_usage_tokens", {**USAGE_LABELS, "account": "prod", "token_type": "input"})
+        == 1_000_000.0
+    )
+    assert sample("llm_exporter_up", {"provider": "fake", "account": "prod"}) == 1.0

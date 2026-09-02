@@ -53,8 +53,13 @@ def extract_tokens(result: dict[str, Any]) -> dict[str, float]:
 class OpenAIProvider(Provider):
     name = "openai"
 
-    def __init__(self, admin_key: str, api_base: str = "https://api.openai.com") -> None:
-        super().__init__()
+    def __init__(
+        self,
+        admin_key: str,
+        api_base: str = "https://api.openai.com",
+        account: str = "default",
+    ) -> None:
+        super().__init__(account)
         self.api_base = api_base.rstrip("/")
         self.session.headers.update({"Authorization": f"Bearer {admin_key}"})
         self._api_key_names: dict[str, str] = {}

@@ -67,8 +67,10 @@ def read_accounts(prefix: str) -> list[Account]:
         if key:
             account_name = name.lower()
             if account_name == "default" and default_key:
-                raise ConfigError(f"Account name 'default' in {prefix}_{name} clashes "
-                                  f"with the unnamed {prefix} key.")
+                raise ConfigError(
+                    f"Account name 'default' in {prefix}_{name} clashes "
+                    f"with the unnamed {prefix} key."
+                )
             accounts.append(Account(account_name, key))
     return accounts
 

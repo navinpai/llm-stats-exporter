@@ -27,10 +27,10 @@ def _handle_signal(signum: int, _frame: FrameType | None) -> None:
 
 def build_providers(config: Config) -> list[Provider]:
     providers: list[Provider] = []
-    if config.openai_admin_key:
-        providers.append(OpenAIProvider(config.openai_admin_key, config.openai_api_base))
-    if config.anthropic_admin_key:
-        providers.append(AnthropicProvider(config.anthropic_admin_key, config.anthropic_api_base))
+    for account in config.openai_accounts:
+        providers.append(OpenAIProvider(account.key, config.openai_api_base, account.name))
+    for account in config.anthropic_accounts:
+        providers.append(AnthropicProvider(account.key, config.anthropic_api_base, account.name))
     return providers
 
 
@@ -58,7 +58,7 @@ def main() -> None:
         "lookback %dd).",
         __version__,
         config.port,
-        ", ".join(p.name for p in providers),
+        ", ".join(f"{p.name}/{p.account}" for p in providers),
         config.poll_interval_seconds,
         config.lookback_days,
     )

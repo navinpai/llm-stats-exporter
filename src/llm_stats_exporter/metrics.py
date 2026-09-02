@@ -4,6 +4,7 @@ from prometheus_client import Counter, Gauge
 
 USAGE_LABELS = [
     "provider",
+    "account",
     "operation",
     "project_id",
     "project_name",
@@ -32,30 +33,30 @@ ESTIMATED_COST = Gauge(
 BILLED_COST = Gauge(
     "llm_cost_usd",
     "Billed USD cost in the daily bucket, from the provider's cost API.",
-    ["provider", "project_id", "project_name", "line_item", "date"],
+    ["provider", "account", "project_id", "project_name", "line_item", "date"],
 )
 MONTHLY_ESTIMATED_COST = Gauge(
     "llm_monthly_estimated_cost_usd",
     "Estimated USD cost for the current calendar month, per API key.",
-    ["provider", "api_key_id", "api_key_name"],
+    ["provider", "account", "api_key_id", "api_key_name"],
 )
 MONTHLY_BILLED_COST = Gauge(
     "llm_monthly_cost_usd",
     "Billed USD cost for the current calendar month, per project/workspace.",
-    ["provider", "project_id", "project_name"],
+    ["provider", "account", "project_id", "project_name"],
 )
 UP = Gauge(
     "llm_exporter_up",
-    "1 if the last poll cycle for this provider succeeded, else 0.",
-    ["provider"],
+    "1 if the last poll cycle for this provider account succeeded, else 0.",
+    ["provider", "account"],
 )
 LAST_SUCCESS = Gauge(
     "llm_exporter_last_success_timestamp_seconds",
-    "Unix timestamp of the last successful poll cycle for this provider.",
-    ["provider"],
+    "Unix timestamp of the last successful poll cycle for this provider account.",
+    ["provider", "account"],
 )
 POLL_ERRORS = Counter(
     "llm_exporter_poll_errors_total",
-    "Total number of failed poll cycles per provider.",
-    ["provider"],
+    "Total number of failed poll cycles per provider account.",
+    ["provider", "account"],
 )

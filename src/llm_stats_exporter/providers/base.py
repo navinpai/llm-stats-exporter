@@ -29,7 +29,8 @@ class Provider(ABC):
 
     name: str
 
-    def __init__(self) -> None:
+    def __init__(self, account: str = "default") -> None:
+        self.account = account
         self.session = requests.Session()
 
     @abstractmethod
