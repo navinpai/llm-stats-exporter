@@ -112,6 +112,6 @@ class Collector:
             for (key_id, key_name), total in monthly_estimated.items():
                 metrics.MONTHLY_ESTIMATED_COST.labels(provider_name, key_id, key_name).set(total)
             for (project_id, project_name), total in monthly_billed.items():
-                metrics.MONTHLY_BILLED_COST.labels(
-                    provider_name, project_id, project_name
-                ).set(total)
+                metrics.MONTHLY_BILLED_COST.labels(provider_name, project_id, project_name).set(
+                    total
+                )

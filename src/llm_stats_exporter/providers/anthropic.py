@@ -65,9 +65,7 @@ class AnthropicProvider(Provider):
     def __init__(self, admin_key: str, api_base: str = "https://api.anthropic.com") -> None:
         super().__init__()
         self.api_base = api_base.rstrip("/")
-        self.session.headers.update(
-            {"x-api-key": admin_key, "anthropic-version": "2023-06-01"}
-        )
+        self.session.headers.update({"x-api-key": admin_key, "anthropic-version": "2023-06-01"})
 
     def fetch(self, start: datetime, end: datetime) -> Snapshot:
         starting_at = start.strftime(ISO_FMT)
@@ -155,9 +153,7 @@ class AnthropicProvider(Provider):
         ]
         records: list[CostRecord] = []
         try:
-            buckets = self._get_paginated(
-                f"{self.api_base}/v1/organizations/cost_report", params
-            )
+            buckets = self._get_paginated(f"{self.api_base}/v1/organizations/cost_report", params)
         except requests.RequestException as exc:
             # The cost endpoint is unavailable on some platforms (e.g. Bedrock
             # orgs); usage data is still valuable, so don't fail the cycle.

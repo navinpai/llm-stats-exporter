@@ -27,9 +27,9 @@ class Pricing:
         if path:
             raw = Path(path).read_text(encoding="utf-8")
         else:
-            raw = (
-                resources.files("llm_stats_exporter") / "data" / "pricing.json"
-            ).read_text(encoding="utf-8")
+            raw = (resources.files("llm_stats_exporter") / "data" / "pricing.json").read_text(
+                encoding="utf-8"
+            )
         data = json.loads(raw)
         models = {
             name: {k: float(v) for k, v in rates.items()}
@@ -43,9 +43,12 @@ class Pricing:
             return self._models[model]
         best: str | None = None
         for name in self._models:
-            if name != "default" and model.startswith(name):
-                if best is None or len(name) > len(best):
-                    best = name
+            if (
+                name != "default"
+                and model.startswith(name)
+                and (best is None or len(name) > len(best))
+            ):
+                best = name
         if best is not None:
             return self._models[best]
         return self._models.get("default")
@@ -57,6 +60,5 @@ class Pricing:
             log.debug("No pricing for model %r; skipping estimate.", model)
             return None
         return sum(
-            tokens.get(cat, 0.0) / 1_000_000.0 * rates.get(cat, 0.0)
-            for cat in BILLABLE_CATEGORIES
+            tokens.get(cat, 0.0) / 1_000_000.0 * rates.get(cat, 0.0) for cat in BILLABLE_CATEGORIES
         )

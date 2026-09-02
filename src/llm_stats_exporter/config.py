@@ -73,9 +73,7 @@ class Config:
             lookback_days=_read_int("LOOKBACK_DAYS", 2),
             pricing_file=os.environ.get("PRICING_FILE", "").strip() or None,
             log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-            openai_api_base=os.environ.get(
-                "OPENAI_API_BASE", "https://api.openai.com"
-            ).rstrip("/"),
+            openai_api_base=os.environ.get("OPENAI_API_BASE", "https://api.openai.com").rstrip("/"),
             anthropic_api_base=os.environ.get(
                 "ANTHROPIC_API_BASE", "https://api.anthropic.com"
             ).rstrip("/"),

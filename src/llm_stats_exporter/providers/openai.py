@@ -116,9 +116,7 @@ class OpenAIProvider(Provider):
             ("group_by", "api_key_id"),
             ("group_by", "model"),
         ]
-        buckets = self._get_paginated(
-            f"{self.api_base}/v1/organization/usage/{operation}", params
-        )
+        buckets = self._get_paginated(f"{self.api_base}/v1/organization/usage/{operation}", params)
         records: list[UsageRecord] = []
         for bucket in buckets:
             date = epoch_to_date(int(bucket.get("start_time", 0)))
