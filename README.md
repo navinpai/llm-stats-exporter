@@ -2,8 +2,8 @@
 
 A Prometheus exporter for LLM API usage and cost. Polls the **OpenAI** and/or
 **Anthropic** org-level admin APIs and exposes unified `llm_*` metrics —
-tokens, requests, billed cost, and estimated cost — split by API key, model,
-project/workspace, and day.
+tokens, requests, billed cost, and estimated cost — split by account, API key,
+model, project/workspace, and day. Multiple accounts per provider are supported.
 
 Inspired by [claude-api-exporter](https://github.com/alacava/claude-api-exporter)
 and [openai-exporter](https://github.com/foxdalas/openai-exporter), but with a
@@ -13,15 +13,15 @@ single metric namespace so cross-provider dashboards and cost rollups are trivia
 
 | Metric | Type | Labels | Description |
 |---|---|---|---|
-| `llm_usage_tokens` | Gauge | `provider, operation, project_id, project_name, api_key_id, api_key_name, model, date, token_type` | Tokens in the daily bucket. `token_type` is one of `input`, `output`, `cache_read`, `cache_write`, `input_audio`, `output_audio`. `input` is always **uncached** input; `input + cache_read` = total prompt tokens. |
-| `llm_requests` | Gauge | `provider, operation, project_id, project_name, api_key_id, api_key_name, model, date` | Model requests in the daily bucket (OpenAI only; Anthropic's usage API doesn't report it). |
+| `llm_usage_tokens` | Gauge | `provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, date, token_type` | Tokens in the daily bucket. `token_type` is one of `input`, `output`, `cache_read`, `cache_write`, `input_audio`, `output_audio`. `input` is always **uncached** input; `input + cache_read` = total prompt tokens. |
+| `llm_requests` | Gauge | `provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, date` | Model requests in the daily bucket (OpenAI only; Anthropic's usage API doesn't report it). |
 | `llm_estimated_cost_usd` | Gauge | same as `llm_requests` | Estimated USD cost from token counts × pricing table. This is the only per-key/per-model cost signal, since provider cost APIs don't break down by key. |
-| `llm_cost_usd` | Gauge | `provider, project_id, project_name, line_item, date` | Billed USD cost from the provider's cost API. Anthropic workspaces map to `project_*`; Anthropic `description` and OpenAI `line_item` map to `line_item`. |
-| `llm_monthly_estimated_cost_usd` | Gauge | `provider, api_key_id, api_key_name` | Month-to-date estimated cost per API key. |
-| `llm_monthly_cost_usd` | Gauge | `provider, project_id, project_name` | Month-to-date billed cost per project/workspace. |
-| `llm_exporter_up` | Gauge | `provider` | 1 if the last poll for the provider succeeded. |
-| `llm_exporter_last_success_timestamp_seconds` | Gauge | `provider` | Unix time of last successful poll. |
-| `llm_exporter_poll_errors_total` | Counter | `provider` | Failed poll cycles. |
+| `llm_cost_usd` | Gauge | `provider, account, project_id, project_name, line_item, date` | Billed USD cost from the provider's cost API. Anthropic workspaces map to `project_*`; Anthropic `description` and OpenAI `line_item` map to `line_item`. |
+| `llm_monthly_estimated_cost_usd` | Gauge | `provider, account, api_key_id, api_key_name` | Month-to-date estimated cost per API key. |
+| `llm_monthly_cost_usd` | Gauge | `provider, account, project_id, project_name` | Month-to-date billed cost per project/workspace. |
+| `llm_exporter_up` | Gauge | `provider, account` | 1 if the last poll for the provider account succeeded. |
+| `llm_exporter_last_success_timestamp_seconds` | Gauge | `provider, account` | Unix time of last successful poll. |
+| `llm_exporter_poll_errors_total` | Counter | `provider, account` | Failed poll cycles. |
 
 Daily metrics use a `date` label (`YYYY-MM-DD`) and are re-set every poll for
 the lookback window, so late-arriving usage is corrected in place. If a
@@ -44,8 +44,10 @@ Kubernetes Secret) — set one or the other, not both.
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENAI_ADMIN_KEY` / `OPENAI_ADMIN_KEY_FILE` | — | OpenAI admin key (enables the OpenAI provider). |
-| `ANTHROPIC_ADMIN_KEY` / `ANTHROPIC_ADMIN_KEY_FILE` | — | Anthropic admin key (enables the Anthropic provider). |
+| `OPENAI_ADMIN_KEY` / `OPENAI_ADMIN_KEY_FILE` | — | OpenAI admin key for the `default` account (enables the OpenAI provider). |
+| `ANTHROPIC_ADMIN_KEY` / `ANTHROPIC_ADMIN_KEY_FILE` | — | Anthropic admin key for the `default` account (enables the Anthropic provider). |
+| `OPENAI_ADMIN_KEY_<NAME>` / `..._FILE` | — | Additional OpenAI accounts (see below). |
+| `ANTHROPIC_ADMIN_KEY_<NAME>` / `..._FILE` | — | Additional Anthropic accounts (see below). |
 | `EXPORTER_PORT` | `9184` | Port for the `/metrics` endpoint. |
 | `POLL_INTERVAL_SECONDS` | `300` | How often to poll the provider APIs. |
 | `LOOKBACK_DAYS` | `2` | Days of daily buckets to (re-)export each poll. |
@@ -53,6 +55,22 @@ Kubernetes Secret) — set one or the other, not both.
 | `LOG_LEVEL` | `INFO` | Python log level. |
 | `OPENAI_API_BASE` | `https://api.openai.com` | Override for testing/proxies. |
 | `ANTHROPIC_API_BASE` | `https://api.anthropic.com` | Override for testing/proxies. |
+
+### Multiple accounts
+
+To scrape several organizations of the same provider from one exporter, add
+named key variables. The suffix (lowercased) becomes the `account` label on
+every metric; the unnamed key maps to `account="default"`:
+
+```sh
+ANTHROPIC_ADMIN_KEY=sk-ant-admin...           # account="default"
+ANTHROPIC_ADMIN_KEY_PROD=sk-ant-admin...      # account="prod"
+OPENAI_ADMIN_KEY_TEAM_A_FILE=/secrets/team-a  # account="team_a"
+```
+
+```promql
+sum by (provider, account) (llm_monthly_cost_usd)
+```
 
 ### Pricing
 
