@@ -200,7 +200,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (date) (last_over_time(llm_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range]))",
+          "expr": "sum by (date) (max by (provider, account, project_id, project_name, line_item, date) (last_over_time(llm_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range])))",
           "instant": true,
           "legendFormat": "{{date}}",
           "refId": "A"
@@ -231,7 +231,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (date) (last_over_time(llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range]))",
+          "expr": "sum by (date) (max by (provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, service_tier, date) (last_over_time(llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range])))",
           "instant": true,
           "legendFormat": "{{date}}",
           "refId": "A"
@@ -428,7 +428,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (date) (last_over_time(llm_usage_tokens{provider=~\"$provider\",account=~\"$account\"}[$__range]))",
+          "expr": "sum by (date) (max by (provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, service_tier, token_type, date) (last_over_time(llm_usage_tokens{provider=~\"$provider\",account=~\"$account\"}[$__range])))",
           "instant": true,
           "legendFormat": "{{date}}",
           "refId": "A"
