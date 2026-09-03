@@ -32,6 +32,18 @@ jobs:
       - run: uv sync --frozen
       - run: uv run pytest
 
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: helm lint chart --set adminKeys.OPENAI_ADMIN_KEY=x
+      - run: helm template chart --set adminKeys.OPENAI_ADMIN_KEY=x > /dev/null
+      - run: >
+          helm template chart --set existingSecret=keys
+          --set serviceMonitor.enabled=true
+          --set-json 'config.pricing.custom={"gpt-4o":{"input":1.0}}'
+          > /dev/null
+
   docker:
     runs-on: ubuntu-latest
     steps:

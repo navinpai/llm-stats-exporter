@@ -43,6 +43,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Push Helm chart
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          helm package chart --version "$VERSION" --app-version "$VERSION"
+          helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin \
+            <<< "${{ secrets.GITHUB_TOKEN }}"
+          helm push "llm-stats-exporter-$VERSION.tgz" \
+            "oci://ghcr.io/${{ github.repository_owner }}/charts"
+
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
