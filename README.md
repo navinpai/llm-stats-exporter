@@ -57,7 +57,7 @@ Kubernetes Secret) — set one or the other, not both.
 | `PRICING_SOURCE` | `litellm` | `litellm` (fetch community pricing, refresh periodically) or `bundled` (offline snapshot). |
 | `PRICING_FILE` | — | Path to a custom pricing JSON (see below); takes precedence over `PRICING_SOURCE`. |
 | `PRICING_URL` | LiteLLM main | Override URL for the LiteLLM pricing JSON. |
-| `PRICING_REFRESH_SECONDS` | `86400` | How often to re-fetch LiteLLM pricing. |
+| `PRICING_REFRESH_SECONDS` | `86400` | How often to re-fetch LiteLLM pricing / re-read `PRICING_FILE`. |
 | `LOG_LEVEL` | `INFO` | Python log level. |
 | `OPENAI_API_BASE` | `https://api.openai.com` | Override for testing/proxies. |
 | `ANTHROPIC_API_BASE` | `https://api.anthropic.com` | Override for testing/proxies. |
