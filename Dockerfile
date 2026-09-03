@@ -6,9 +6,10 @@ COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.13-slim-trixie
-RUN groupadd -r exporter && useradd -r -g exporter exporter
+RUN groupadd -r -g 65532 exporter && useradd -r -u 65532 -g exporter exporter
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-USER exporter
+# Numeric USER so Kubernetes runAsNonRoot can verify the image is non-root.
+USER 65532
 EXPOSE 9184
 CMD ["llm-stats-exporter"]
