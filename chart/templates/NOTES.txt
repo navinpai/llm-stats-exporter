@@ -1,0 +1,17 @@
+llm-stats-exporter is deployed.
+
+Check the metrics endpoint:
+
+  kubectl port-forward svc/{{ include "llm-stats-exporter.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  curl localhost:{{ .Values.service.port }}/metrics | grep llm_
+
+{{- if .Values.existingSecret }}
+
+Keys are read from the existing Secret "{{ .Values.existingSecret }}"; its keys
+must be env var names like OPENAI_ADMIN_KEY or ANTHROPIC_ADMIN_KEY_PROD.
+{{- end }}
+{{- if not .Values.serviceMonitor.enabled }}
+
+serviceMonitor.enabled=false — add a scrape config for the Service, or enable
+the ServiceMonitor if you run the Prometheus Operator.
+{{- end }}

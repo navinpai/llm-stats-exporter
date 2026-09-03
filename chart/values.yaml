@@ -1,0 +1,72 @@
+image:
+  repository: ghcr.io/navinpai/llm-stats-exporter
+  # Defaults to the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Admin keys as env-var-name -> value, rendered into a Secret and injected
+# via envFrom. Variable names follow the exporter's config contract, so
+# multiple accounts work out of the box:
+#   adminKeys:
+#     OPENAI_ADMIN_KEY: sk-admin-...
+#     ANTHROPIC_ADMIN_KEY: sk-ant-admin-...
+#     ANTHROPIC_ADMIN_KEY_PROD: sk-ant-admin-...   # account="prod"
+adminKeys: {}
+
+# Name of a pre-existing Secret whose keys are those same env var names.
+# Takes precedence over adminKeys.
+existingSecret: ""
+
+config:
+  pollIntervalSeconds: 300
+  lookbackDays: 2
+  logLevel: INFO
+  pricing:
+    # "litellm" (fetched, auto-refreshed) or "bundled" (offline snapshot).
+    source: litellm
+    # Override URL for the LiteLLM pricing JSON.
+    url: ""
+    refreshSeconds: 86400
+    # Custom pricing table (USD per 1M tokens). When set, it is mounted as a
+    # ConfigMap and PRICING_FILE points at it, replacing the fetched table:
+    #   custom:
+    #     gpt-4o: {input: 1.8, output: 7.2, cache_read: 0.9}
+    #     default: {input: 3.0, output: 15.0}
+    custom: {}
+
+# Extra environment variables (raw container env entries).
+extraEnv: []
+
+service:
+  port: 9184
+
+serviceMonitor:
+  enabled: false
+  interval: 60s
+  # Extra labels for the ServiceMonitor (e.g. to match a Prometheus selector).
+  labels: {}
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

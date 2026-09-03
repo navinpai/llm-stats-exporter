@@ -1,0 +1,102 @@
+{{- if and (not .Values.existingSecret) (not .Values.adminKeys) }}
+{{- fail "At least one admin key is required: set adminKeys (e.g. adminKeys.OPENAI_ADMIN_KEY) or existingSecret." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "llm-stats-exporter.fullname" . }}
+  labels:
+    {{- include "llm-stats-exporter.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "llm-stats-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if not .Values.existingSecret }}
+        checksum/keys: {{ .Values.adminKeys | toJson | sha256sum }}
+        {{- end }}
+        {{- if .Values.config.pricing.custom }}
+        checksum/pricing: {{ .Values.config.pricing.custom | toJson | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "llm-stats-exporter.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: exporter
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: metrics
+              containerPort: 9184
+          envFrom:
+            - secretRef:
+                name: {{ include "llm-stats-exporter.secretName" . }}
+          env:
+            - name: POLL_INTERVAL_SECONDS
+              value: {{ .Values.config.pollIntervalSeconds | quote }}
+            - name: LOOKBACK_DAYS
+              value: {{ .Values.config.lookbackDays | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: PRICING_SOURCE
+              value: {{ .Values.config.pricing.source | quote }}
+            - name: PRICING_REFRESH_SECONDS
+              value: {{ .Values.config.pricing.refreshSeconds | quote }}
+            {{- with .Values.config.pricing.url }}
+            - name: PRICING_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.config.pricing.custom }}
+            - name: PRICING_FILE
+              value: /etc/llm-pricing/pricing.json
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.config.pricing.custom }}
+          volumeMounts:
+            - name: pricing
+              mountPath: /etc/llm-pricing
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+      {{- if .Values.config.pricing.custom }}
+      volumes:
+        - name: pricing
+          configMap:
+            name: {{ include "llm-stats-exporter.fullname" . }}-pricing
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

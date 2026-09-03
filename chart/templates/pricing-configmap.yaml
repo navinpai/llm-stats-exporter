@@ -1,0 +1,11 @@
+{{- with .Values.config.pricing.custom }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "llm-stats-exporter.fullname" $ }}-pricing
+  labels:
+    {{- include "llm-stats-exporter.labels" $ | nindent 4 }}
+data:
+  pricing.json: |
+    {{ dict "models" . | toPrettyJson | nindent 4 | trim }}
+{{- end }}
