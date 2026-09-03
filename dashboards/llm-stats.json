@@ -35,7 +35,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
       "id": 2,
       "options": {
         "colorMode": "value",
@@ -56,6 +56,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Linear projection of month-end billed cost: MTD billed × days in month ÷ days elapsed.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -64,7 +65,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
       "id": 3,
       "options": {
         "colorMode": "value",
@@ -75,12 +76,12 @@
       },
       "targets": [
         {
-          "expr": "sum(llm_monthly_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
+          "expr": "sum(llm_monthly_cost_usd{provider=~\"$provider\",account=~\"$account\"}) * days_in_month() / day_of_month()",
           "instant": true,
           "refId": "A"
         }
       ],
-      "title": "Month-to-date estimated cost",
+      "title": "Projected month-end billed cost",
       "type": "stat"
     },
     {
@@ -94,7 +95,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
       "id": 4,
       "options": {
         "colorMode": "value",
@@ -111,36 +112,6 @@
         }
       ],
       "title": "Billed cost (latest day)",
-      "type": "stat"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Estimated cost (tokens × pricing table) for the last day of the selected time range.",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
-      "id": 5,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "expr": "sum(llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\",date=\"${__to:date:YYYY-MM-DD}\"})",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Estimated cost (latest day)",
       "type": "stat"
     },
     {
@@ -190,7 +161,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
       "id": 8,
       "options": {
         "displayMode": "basic",
@@ -211,37 +182,6 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Token counts × pricing table, summed per day.",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "continuous-GrYlRd" },
-          "min": 0,
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
-      "id": 9,
-      "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "expr": "sum by (date) (max by (provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, service_tier, date) (last_over_time(llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range])))",
-          "instant": true,
-          "legendFormat": "{{date}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Estimated cost by day",
-      "type": "bargauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "continuous-BlPu" },
@@ -251,7 +191,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 22 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
       "id": 10,
       "options": {
         "displayMode": "basic",
@@ -272,37 +212,6 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Summed over the exporter's lookback window.",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "continuous-BlPu" },
-          "min": 0,
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 22 },
-      "id": 11,
-      "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "expr": "topk(10, sum by (model) (llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}))",
-          "instant": true,
-          "legendFormat": "{{model}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Top models — estimated cost (window)",
-      "type": "bargauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "description": "Provider billing line items, summed over the exporter's lookback window.",
       "fieldConfig": {
         "defaults": {
@@ -313,7 +222,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 22 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
       "id": 12,
       "options": {
         "displayMode": "basic",
@@ -343,7 +252,7 @@
           }
         ]
       },
-      "gridPos": { "h": 7, "w": 16, "x": 0, "y": 30 },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 30 },
       "id": 13,
       "options": {
         "footer": { "show": false },
@@ -367,37 +276,6 @@
         }
       ],
       "type": "table"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Summed over the exporter's lookback window. Batch traffic is estimated at 50% of standard rates; flex/priority use standard rates (billed cost is the source of truth there).",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "continuous-BlPu" },
-          "min": 0,
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 30 },
-      "id": 26,
-      "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "expr": "sum by (service_tier) (llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
-          "instant": true,
-          "legendFormat": "{{service_tier}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Estimated cost by service tier (window)",
-      "type": "bargauge"
     },
     {
       "collapsed": false,
