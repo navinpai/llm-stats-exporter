@@ -214,13 +214,15 @@
       "targets": [
         {
           "expr": "sum by (date) (llm_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
-          "format": "table",
           "instant": true,
           "refId": "A"
         }
       ],
       "title": "Billed cost by day",
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        { "id": "merge", "options": {} },
+        { "id": "sortBy", "options": { "sort": [{ "field": "date" }] } },
         {
           "id": "organize",
           "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "Billed (USD)" } }
@@ -251,13 +253,15 @@
       "targets": [
         {
           "expr": "sum by (date) (llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
-          "format": "table",
           "instant": true,
           "refId": "A"
         }
       ],
       "title": "Estimated cost by day",
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        { "id": "merge", "options": {} },
+        { "id": "sortBy", "options": { "sort": [{ "field": "date" }] } },
         {
           "id": "organize",
           "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "Estimated (USD)" } }
@@ -378,13 +382,14 @@
       "targets": [
         {
           "expr": "sum by (provider, account, project_name) (llm_monthly_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
-          "format": "table",
           "instant": true,
           "refId": "A"
         }
       ],
       "title": "Month-to-date billed cost by project / workspace",
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        { "id": "merge", "options": {} },
         {
           "id": "organize",
           "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "MTD billed (USD)" } }
@@ -453,13 +458,15 @@
       "targets": [
         {
           "expr": "sum by (date) (llm_usage_tokens{provider=~\"$provider\",account=~\"$account\"})",
-          "format": "table",
           "instant": true,
           "refId": "A"
         }
       ],
       "title": "Tokens by day",
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        { "id": "merge", "options": {} },
+        { "id": "sortBy", "options": { "sort": [{ "field": "date" }] } },
         {
           "id": "organize",
           "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "Tokens" } }
