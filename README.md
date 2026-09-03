@@ -22,6 +22,9 @@ single metric namespace so cross-provider dashboards and cost rollups are trivia
 | `llm_exporter_up` | Gauge | `provider, account` | 1 if the last poll for the provider account succeeded. |
 | `llm_exporter_last_success_timestamp_seconds` | Gauge | `provider, account` | Unix time of last successful poll. |
 | `llm_exporter_poll_errors_total` | Counter | `provider, account` | Failed poll cycles. |
+| `llm_pricing_models` | Gauge | `source` | Models in the active pricing table (`source` is `litellm`, `bundled`, or `file`). |
+| `llm_pricing_last_refresh_timestamp_seconds` | Gauge | — | Unix time of the last successful pricing load/refresh. |
+| `llm_exporter_build_info` | Gauge | `version` | Always 1; exporter version. |
 
 Daily metrics use a `date` label (`YYYY-MM-DD`) and are re-set every poll for
 the lookback window, so late-arriving usage is corrected in place. If a
@@ -51,7 +54,10 @@ Kubernetes Secret) — set one or the other, not both.
 | `EXPORTER_PORT` | `9184` | Port for the `/metrics` endpoint. |
 | `POLL_INTERVAL_SECONDS` | `300` | How often to poll the provider APIs. |
 | `LOOKBACK_DAYS` | `2` | Days of daily buckets to (re-)export each poll. |
-| `PRICING_FILE` | bundled | Path to a custom pricing JSON (see below). |
+| `PRICING_SOURCE` | `litellm` | `litellm` (fetch community pricing, refresh periodically) or `bundled` (offline snapshot). |
+| `PRICING_FILE` | — | Path to a custom pricing JSON (see below); takes precedence over `PRICING_SOURCE`. |
+| `PRICING_URL` | LiteLLM main | Override URL for the LiteLLM pricing JSON. |
+| `PRICING_REFRESH_SECONDS` | `86400` | How often to re-fetch LiteLLM pricing. |
 | `LOG_LEVEL` | `INFO` | Python log level. |
 | `OPENAI_API_BASE` | `https://api.openai.com` | Override for testing/proxies. |
 | `ANTHROPIC_API_BASE` | `https://api.anthropic.com` | Override for testing/proxies. |
@@ -75,8 +81,13 @@ sum by (provider, account) (llm_monthly_cost_usd)
 ### Pricing
 
 `llm_estimated_cost_usd` multiplies token counts by a pricing table
-(USD per 1M tokens). A best-effort table is bundled; **verify it against
-current provider pricing** and override with `PRICING_FILE`:
+(USD per 1M tokens). By default the table is fetched from
+[LiteLLM's community-maintained pricing JSON](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json)
+(OpenAI and Anthropic models only) and refreshed every `PRICING_REFRESH_SECONDS`.
+If the fetch fails, the exporter logs a warning, falls back to the bundled
+best-effort snapshot (or keeps the last good table), and retries on the next
+poll cycle. Set `PRICING_SOURCE=bundled` for air-gapped deployments, or
+provide your own table with `PRICING_FILE`:
 
 ```json
 {
