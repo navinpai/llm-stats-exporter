@@ -63,6 +63,10 @@ spec:
             - name: PRICING_URL
               value: {{ . | quote }}
             {{- end }}
+            {{- with .Values.config.pricing.tierMultipliers }}
+            - name: PRICING_TIER_MULTIPLIERS
+              value: {{ . | toJson | quote }}
+            {{- end }}
             {{- if .Values.config.pricing.custom }}
             - name: PRICING_FILE
               value: /etc/llm-pricing/pricing.json

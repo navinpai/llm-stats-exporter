@@ -18,6 +18,7 @@ def clean_env(monkeypatch):
         "PRICING_FILE",
         "PRICING_URL",
         "PRICING_REFRESH_SECONDS",
+        "PRICING_TIER_MULTIPLIERS",
     ]:
         monkeypatch.delenv(var, raising=False)
 
@@ -78,6 +79,7 @@ def test_from_env_defaults(monkeypatch):
     assert config.pricing_file is None
     assert config.pricing_url is None
     assert config.pricing_refresh_seconds == 86400
+    assert config.pricing_tier_multipliers == {"batch": 0.5}
 
 
 def test_from_env_pricing_source_bundled(monkeypatch):
@@ -90,6 +92,30 @@ def test_from_env_rejects_bad_pricing_source(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_ADMIN_KEY", "sk-ant-admin-test")
     monkeypatch.setenv("PRICING_SOURCE", "langfuse")
     with pytest.raises(ConfigError, match="PRICING_SOURCE"):
+        Config.from_env()
+
+
+def test_tier_multipliers_merge_over_defaults(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_ADMIN_KEY", "sk-ant-admin-test")
+    monkeypatch.setenv("PRICING_TIER_MULTIPLIERS", '{"flex": 0.5, "priority": 1.25}')
+    assert Config.from_env().pricing_tier_multipliers == {
+        "batch": 0.5,
+        "flex": 0.5,
+        "priority": 1.25,
+    }
+
+
+def test_tier_multipliers_can_override_batch(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_ADMIN_KEY", "sk-ant-admin-test")
+    monkeypatch.setenv("PRICING_TIER_MULTIPLIERS", '{"batch": 1.0}')
+    assert Config.from_env().pricing_tier_multipliers == {"batch": 1.0}
+
+
+@pytest.mark.parametrize("raw", ["not json", "[0.5]", '{"batch": "half"}', '{"batch": -1}'])
+def test_tier_multipliers_rejects_bad_values(monkeypatch, raw):
+    monkeypatch.setenv("ANTHROPIC_ADMIN_KEY", "sk-ant-admin-test")
+    monkeypatch.setenv("PRICING_TIER_MULTIPLIERS", raw)
+    with pytest.raises(ConfigError, match="PRICING_TIER_MULTIPLIERS"):
         Config.from_env()
 
 

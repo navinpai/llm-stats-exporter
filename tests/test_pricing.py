@@ -58,6 +58,14 @@ def test_estimate_batch_tier_is_half_price(pricing):
     assert pricing.estimate_usd("gpt-4o", tokens, "priority") == pytest.approx(standard)
 
 
+def test_estimate_with_custom_tier_multipliers():
+    pricing = Pricing({"gpt-4o": {"input": 2.0}}, tier_multipliers={"priority": 2.0})
+    tokens = {"input": 1_000_000}
+    assert pricing.estimate_usd("gpt-4o", tokens, "priority") == pytest.approx(4.0)
+    # Custom map replaces the defaults entirely (merging is config's job).
+    assert pricing.estimate_usd("gpt-4o", tokens, "batch") == pytest.approx(2.0)
+
+
 def test_load_bundled_pricing():
     pricing = Pricing.load()
     assert pricing.rates_for("claude-sonnet-4-6") is not None

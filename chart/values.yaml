@@ -29,6 +29,10 @@ config:
     # Override URL for the LiteLLM pricing JSON.
     url: ""
     refreshSeconds: 86400
+    # Estimate multipliers per service_tier, merged over the default
+    # {"batch": 0.5}, e.g.:
+    #   tierMultipliers: {flex: 0.5, priority: 1.25}
+    tierMultipliers: {}
     # Custom pricing table (USD per 1M tokens). When set, it is mounted as a
     # ConfigMap and PRICING_FILE points at it, replacing the fetched table:
     #   custom:

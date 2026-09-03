@@ -54,6 +54,7 @@ def main() -> None:
         file=config.pricing_file,
         url=config.pricing_url or LITELLM_PRICING_URL,
         refresh_seconds=config.pricing_refresh_seconds,
+        tier_multipliers=config.pricing_tier_multipliers,
     )
     collector = Collector(providers, Pricing({}), config.lookback_days)
 

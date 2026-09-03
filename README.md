@@ -35,8 +35,9 @@ provider poll fails, its last good snapshot is kept and `llm_exporter_up` drops 
 Anthropic's tier (`standard`, `batch`, `priority`, ...) passes through.
 OpenAI embeddings/moderations don't report a tier and are always `standard`.
 Batch-tier estimates are priced at 50% of standard rates (both providers'
-documented Batch API discount); other tiers use standard rates, so for
-`flex`/`priority` traffic the billed cost metrics are the source of truth.
+documented Batch API discount); other tiers use standard rates unless you set
+`PRICING_TIER_MULTIPLIERS`, so for `flex`/`priority` traffic the billed cost
+metrics are the source of truth.
 
 ## Requirements
 
@@ -66,6 +67,7 @@ Kubernetes Secret) — set one or the other, not both.
 | `PRICING_FILE` | — | Path to a custom pricing JSON (see below); takes precedence over `PRICING_SOURCE`. |
 | `PRICING_URL` | LiteLLM main | Override URL for the LiteLLM pricing JSON. |
 | `PRICING_REFRESH_SECONDS` | `86400` | How often to re-fetch LiteLLM pricing / re-read `PRICING_FILE`. |
+| `PRICING_TIER_MULTIPLIERS` | `{"batch": 0.5}` | JSON object of `service_tier` → estimate multiplier, merged over the default (e.g. `{"flex": 0.5, "priority": 1.25}`). Unlisted tiers use standard rates. |
 | `LOG_LEVEL` | `INFO` | Python log level. |
 | `OPENAI_API_BASE` | `https://api.openai.com` | Override for testing/proxies. |
 | `ANTHROPIC_API_BASE` | `https://api.anthropic.com` | Override for testing/proxies. |

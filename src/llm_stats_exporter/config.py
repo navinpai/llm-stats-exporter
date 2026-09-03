@@ -12,9 +12,12 @@ Multiple accounts per provider are supported through named key variables:
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
+from llm_stats_exporter.pricing import DEFAULT_TIER_MULTIPLIERS
 
 
 class ConfigError(Exception):
@@ -85,6 +88,29 @@ def _read_int(env_name: str, default: int) -> int:
         raise ConfigError(f"{env_name} must be an integer, got {raw!r}.") from exc
 
 
+def _read_tier_multipliers() -> dict[str, float]:
+    """Merge PRICING_TIER_MULTIPLIERS (JSON tier -> multiplier) over the defaults."""
+    raw = os.environ.get("PRICING_TIER_MULTIPLIERS", "").strip()
+    multipliers = dict(DEFAULT_TIER_MULTIPLIERS)
+    if not raw:
+        return multipliers
+    try:
+        parsed = json.loads(raw)
+    except ValueError as exc:
+        raise ConfigError(f"PRICING_TIER_MULTIPLIERS is not valid JSON: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ConfigError(
+            'PRICING_TIER_MULTIPLIERS must be a JSON object like {"batch": 0.5, "flex": 0.5}.'
+        )
+    for tier, value in parsed.items():
+        if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+            raise ConfigError(
+                f"PRICING_TIER_MULTIPLIERS[{tier!r}] must be a non-negative number, got {value!r}."
+            )
+        multipliers[str(tier)] = float(value)
+    return multipliers
+
+
 @dataclass(frozen=True)
 class Config:
     openai_accounts: list[Account]
@@ -96,6 +122,7 @@ class Config:
     pricing_file: str | None
     pricing_url: str | None
     pricing_refresh_seconds: int
+    pricing_tier_multipliers: dict[str, float]
     log_level: str
     openai_api_base: str
     anthropic_api_base: str
@@ -125,6 +152,7 @@ class Config:
             pricing_file=os.environ.get("PRICING_FILE", "").strip() or None,
             pricing_url=os.environ.get("PRICING_URL", "").strip() or None,
             pricing_refresh_seconds=_read_int("PRICING_REFRESH_SECONDS", 86400),
+            pricing_tier_multipliers=_read_tier_multipliers(),
             log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
             openai_api_base=os.environ.get("OPENAI_API_BASE", "https://api.openai.com").rstrip("/"),
             anthropic_api_base=os.environ.get(
