@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from llm_stats_exporter import metrics
@@ -43,15 +44,27 @@ class Collector:
         for provider in self.providers:
             key = (provider.name, provider.account)
             try:
-                self._snapshots[key] = provider.fetch(start, end)
+                snapshot = provider.fetch(start, end)
+                if snapshot.costs is None:
+                    previous = self._snapshots.get(key)
+                    kept = previous.costs or [] if previous else []
+                    snapshot = replace(snapshot, costs=kept)
+                    metrics.POLL_ERRORS.labels(*key).inc()
+                    log.warning(
+                        "Costs unavailable for %s/%s; keeping %d previous cost record(s).",
+                        provider.name,
+                        provider.account,
+                        len(kept),
+                    )
+                self._snapshots[key] = snapshot
                 metrics.UP.labels(*key).set(1)
                 metrics.LAST_SUCCESS.labels(*key).set(time.time())
                 log.info(
                     "Poll OK for %s/%s: %d usage record(s), %d cost record(s).",
                     provider.name,
                     provider.account,
-                    len(self._snapshots[key].usage),
-                    len(self._snapshots[key].costs),
+                    len(snapshot.usage),
+                    len(snapshot.costs or []),
                 )
             except Exception:
                 metrics.UP.labels(*key).set(0)
@@ -110,7 +123,7 @@ class Collector:
                 if estimate:
                     metrics.ESTIMATED_COST.labels(*labels).set(estimate)
 
-            for cost in snapshot.costs:
+            for cost in snapshot.costs or []:
                 if cost.date.startswith(month):
                     key = (cost.project_id, cost.project_name)
                     monthly_billed[key] = monthly_billed.get(key, 0.0) + cost.amount_usd

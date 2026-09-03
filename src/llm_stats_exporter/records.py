@@ -44,5 +44,9 @@ class CostRecord:
 
 @dataclass(frozen=True)
 class Snapshot:
+    """``costs=None`` means the cost fetch failed (unknown), as opposed to
+    ``[]`` (fetched fine, genuinely no costs). The collector keeps the
+    previous cost records when costs are unknown."""
+
     usage: list[UsageRecord]
-    costs: list[CostRecord]
+    costs: list[CostRecord] | None

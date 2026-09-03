@@ -151,7 +151,7 @@ class AnthropicProvider(Provider):
 
     def _fetch_costs(
         self, starting_at: str, ending_at: str, workspace_names: dict[str, str]
-    ) -> list[CostRecord]:
+    ) -> list[CostRecord] | None:
         params: list[tuple[str, Any]] = [
             ("starting_at", starting_at),
             ("ending_at", ending_at),
@@ -164,8 +164,8 @@ class AnthropicProvider(Provider):
         except requests.RequestException as exc:
             # The cost endpoint is unavailable on some platforms (e.g. Bedrock
             # orgs); usage data is still valuable, so don't fail the cycle.
-            log.warning("Anthropic cost report fetch failed (continuing): %s", exc)
-            return records
+            log.warning("Anthropic cost report fetch failed (keeping previous cost data): %s", exc)
+            return None
         for bucket in buckets:
             date = to_date(bucket.get("starting_at", ""))
             for result in bucket.get("results", []):

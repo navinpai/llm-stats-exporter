@@ -159,6 +159,61 @@ def test_failed_poll_keeps_last_snapshot(pricing):
     assert sample("llm_usage_tokens", {**USAGE_LABELS, "token_type": "input"}) == 1_000_000.0
 
 
+def test_unknown_costs_keep_previous_cost_records(pricing):
+    provider = FakeProvider(Snapshot(usage=[USAGE], costs=[COST]))
+    collector = Collector([provider], pricing, lookback_days=2)
+    collector.poll(NOW)
+
+    provider.snapshot = Snapshot(usage=[USAGE], costs=None)
+    up_labels = {"provider": "fake", "account": "default"}
+    errors_before = sample("llm_exporter_poll_errors_total", up_labels) or 0.0
+    collector.poll(NOW)
+
+    # Usage stays fresh, the poll counts as up, but the failure is visible.
+    assert sample("llm_exporter_up", up_labels) == 1.0
+    assert sample("llm_exporter_poll_errors_total", up_labels) == errors_before + 1
+    # Cost series come from the last snapshot with known costs.
+    cost_labels = {
+        "provider": "fake",
+        "account": "default",
+        "project_id": "ws_1",
+        "project_name": "prod",
+        "line_item": "li",
+        "date": "2026-09-15",
+    }
+    assert sample("llm_cost_usd", cost_labels) == 5.0
+    assert (
+        sample(
+            "llm_monthly_cost_usd",
+            {k: v for k, v in cost_labels.items() if k not in ("line_item", "date")},
+        )
+        == 5.0
+    )
+
+
+def test_unknown_costs_with_no_previous_snapshot_exports_none(pricing):
+    provider = FakeProvider(Snapshot(usage=[USAGE], costs=None))
+    collector = Collector([provider], pricing, lookback_days=2)
+    collector.poll(NOW)
+
+    assert sample("llm_exporter_up", {"provider": "fake", "account": "default"}) == 1.0
+    assert sample("llm_usage_tokens", {**USAGE_LABELS, "token_type": "input"}) == 1_000_000.0
+    assert (
+        sample(
+            "llm_cost_usd",
+            {
+                "provider": "fake",
+                "account": "default",
+                "project_id": "ws_1",
+                "project_name": "prod",
+                "line_item": "li",
+                "date": "2026-09-15",
+            },
+        )
+        is None
+    )
+
+
 def test_multiple_accounts_export_distinct_series(pricing):
     default_account = FakeProvider(Snapshot(usage=[USAGE], costs=[]))
     prod_account = FakeProvider(Snapshot(usage=[USAGE], costs=[]), account="prod")

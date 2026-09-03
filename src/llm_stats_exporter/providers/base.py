@@ -5,11 +5,22 @@ from datetime import UTC, datetime
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from llm_stats_exporter.records import Snapshot
 
 DEFAULT_TIMEOUT = 60
 UNKNOWN = "unknown"
+
+# Providers rate-limit the org admin APIs; back off and honor Retry-After
+# instead of failing the poll cycle on a transient 429/5xx.
+RETRY = Retry(
+    total=3,
+    backoff_factor=2.0,
+    status_forcelist=(429, 500, 502, 503, 504),
+    allowed_methods=("GET",),
+)
 
 
 def to_date(iso_ts: str) -> str:
@@ -32,6 +43,8 @@ class Provider(ABC):
     def __init__(self, account: str = "default") -> None:
         self.account = account
         self.session = requests.Session()
+        self.session.mount("https://", HTTPAdapter(max_retries=RETRY))
+        self.session.mount("http://", HTTPAdapter(max_retries=RETRY))
 
     @abstractmethod
     def fetch(self, start: datetime, end: datetime) -> Snapshot:

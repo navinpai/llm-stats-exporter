@@ -164,7 +164,7 @@ class OpenAIProvider(Provider):
 
     def _fetch_costs(
         self, start_ts: int, end_ts: int, project_names: dict[str, str]
-    ) -> list[CostRecord]:
+    ) -> list[CostRecord] | None:
         params: list[tuple[str, Any]] = [
             ("start_time", start_ts),
             ("end_time", end_ts),
@@ -177,8 +177,8 @@ class OpenAIProvider(Provider):
         try:
             buckets = self._get_paginated(f"{self.api_base}/v1/organization/costs", params)
         except requests.RequestException as exc:
-            log.warning("OpenAI costs fetch failed (continuing): %s", exc)
-            return records
+            log.warning("OpenAI costs fetch failed (keeping previous cost data): %s", exc)
+            return None
         for bucket in buckets:
             date = epoch_to_date(int(bucket.get("start_time", 0)))
             for result in bucket.get("results", []):

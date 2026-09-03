@@ -175,4 +175,4 @@ def test_fetch_survives_cost_endpoint_failure():
 
     provider = OpenAIProvider("sk-admin-test")
     snapshot = provider.fetch(datetime(2026, 9, 1, tzinfo=UTC), datetime(2026, 9, 4, tzinfo=UTC))
-    assert snapshot.costs == []
+    assert snapshot.costs is None
