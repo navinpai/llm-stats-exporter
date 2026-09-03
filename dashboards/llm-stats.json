@@ -200,7 +200,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (date) (llm_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
+          "expr": "sum by (date) (last_over_time(llm_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range]))",
           "instant": true,
           "legendFormat": "{{date}}",
           "refId": "A"
@@ -231,7 +231,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (date) (llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
+          "expr": "sum by (date) (last_over_time(llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}[$__range]))",
           "instant": true,
           "legendFormat": "{{date}}",
           "refId": "A"
@@ -428,7 +428,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (date) (llm_usage_tokens{provider=~\"$provider\",account=~\"$account\"})",
+          "expr": "sum by (date) (last_over_time(llm_usage_tokens{provider=~\"$provider\",account=~\"$account\"}[$__range]))",
           "instant": true,
           "legendFormat": "{{date}}",
           "refId": "A"
