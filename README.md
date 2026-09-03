@@ -172,6 +172,19 @@ scrape_configs:
       - targets: ["llm-stats-exporter:9184"]
 ```
 
+## Grafana dashboard
+
+A ready-made dashboard lives at
+[`dashboards/llm-stats.json`](dashboards/llm-stats.json) — import it via
+*Dashboards → New → Import* and pick your Prometheus data source (the data
+source is a template variable, not hardcoded). It includes month-to-date
+billed/estimated spend, per-day cost, top API keys/models, line-item
+breakdown, token usage, cache hit ratio, and a collapsed exporter-health row.
+
+Note on daily panels: the exporter keys daily buckets by a `date` **label**,
+so per-day panels use instant queries grouped by `date` rather than the graph
+time axis.
+
 ## Example queries
 
 ```promql
