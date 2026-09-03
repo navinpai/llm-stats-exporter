@@ -15,20 +15,7 @@
   "description": "LLM API usage and cost from llm-stats-exporter (https://github.com/navinpai/llm-stats-exporter)",
   "editable": true,
   "graphTooltip": 1,
-  "links": [
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": false,
-      "tags": [],
-      "targetBlank": true,
-      "title": "llm-stats-exporter on GitHub",
-      "tooltip": "Source of these metrics",
-      "type": "link",
-      "url": "https://github.com/navinpai/llm-stats-exporter"
-    }
-  ],
+  "links": [],
   "panels": [
     {
       "collapsed": false,
@@ -725,11 +712,11 @@
       "type": "row"
     },
     {
-      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 55 },
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 99 },
       "id": 25,
       "options": {
-        "content": "Metrics collected by **[llm-stats-exporter](https://github.com/navinpai/llm-stats-exporter)** — a Prometheus exporter for OpenAI / Anthropic usage and cost.\n\nDaily panels group by the exporter's `date` label; \"window\" panels aggregate over the exporter's lookback window (`LOOKBACK_DAYS`, default 2 days + today). Estimated cost is token counts × pricing table; billed cost comes from the provider cost APIs.",
-        "mode": "markdown"
+        "content": "<div style=\"text-align: center; padding-top: 4px;\">Metrics by <a href=\"https://github.com/navinpai/llm-stats-exporter\" target=\"_blank\"><b>llm-stats-exporter</b></a>, a Prometheus exporter for LLM usage and cost.</div>",
+        "mode": "html"
       },
       "title": "",
       "transparent": true,
