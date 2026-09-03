@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from prometheus_client import Counter, Gauge
 
+from llm_stats_exporter import __version__
+
 USAGE_LABELS = [
     "provider",
     "account",
@@ -60,3 +62,18 @@ POLL_ERRORS = Counter(
     "Total number of failed poll cycles per provider account.",
     ["provider", "account"],
 )
+PRICING_MODELS = Gauge(
+    "llm_pricing_models",
+    "Number of models in the active pricing table.",
+    ["source"],
+)
+PRICING_LAST_REFRESH = Gauge(
+    "llm_pricing_last_refresh_timestamp_seconds",
+    "Unix timestamp of the last successful pricing table load/refresh.",
+)
+BUILD_INFO = Gauge(
+    "llm_exporter_build_info",
+    "Exporter build information.",
+    ["version"],
+)
+BUILD_INFO.labels(__version__).set(1)
