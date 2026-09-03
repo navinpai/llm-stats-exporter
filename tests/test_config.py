@@ -10,7 +10,15 @@ def clean_env(monkeypatch):
     for var in list(os.environ):
         if var.startswith(("OPENAI_ADMIN_KEY", "ANTHROPIC_ADMIN_KEY")):
             monkeypatch.delenv(var)
-    for var in ["EXPORTER_PORT", "POLL_INTERVAL_SECONDS", "LOOKBACK_DAYS"]:
+    for var in [
+        "EXPORTER_PORT",
+        "POLL_INTERVAL_SECONDS",
+        "LOOKBACK_DAYS",
+        "PRICING_SOURCE",
+        "PRICING_FILE",
+        "PRICING_URL",
+        "PRICING_REFRESH_SECONDS",
+    ]:
         monkeypatch.delenv(var, raising=False)
 
 
@@ -66,7 +74,23 @@ def test_from_env_defaults(monkeypatch):
     assert config.port == 9184
     assert config.poll_interval_seconds == 300
     assert config.lookback_days == 2
+    assert config.pricing_source == "litellm"
     assert config.pricing_file is None
+    assert config.pricing_url is None
+    assert config.pricing_refresh_seconds == 86400
+
+
+def test_from_env_pricing_source_bundled(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_ADMIN_KEY", "sk-ant-admin-test")
+    monkeypatch.setenv("PRICING_SOURCE", "Bundled")
+    assert Config.from_env().pricing_source == "bundled"
+
+
+def test_from_env_rejects_bad_pricing_source(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_ADMIN_KEY", "sk-ant-admin-test")
+    monkeypatch.setenv("PRICING_SOURCE", "langfuse")
+    with pytest.raises(ConfigError, match="PRICING_SOURCE"):
+        Config.from_env()
 
 
 def test_read_accounts_named_keys(monkeypatch, tmp_path):

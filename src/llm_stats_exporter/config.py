@@ -92,7 +92,10 @@ class Config:
     port: int
     poll_interval_seconds: int
     lookback_days: int
+    pricing_source: str
     pricing_file: str | None
+    pricing_url: str | None
+    pricing_refresh_seconds: int
     log_level: str
     openai_api_base: str
     anthropic_api_base: str
@@ -107,13 +110,21 @@ class Config:
                 "and/or ANTHROPIC_ADMIN_KEY[_FILE] (or named variants like "
                 "OPENAI_ADMIN_KEY_PROD)."
             )
+        pricing_source = os.environ.get("PRICING_SOURCE", "litellm").strip().lower()
+        if pricing_source not in ("litellm", "bundled"):
+            raise ConfigError(
+                f"PRICING_SOURCE must be 'litellm' or 'bundled', got {pricing_source!r}."
+            )
         return cls(
             openai_accounts=openai_accounts,
             anthropic_accounts=anthropic_accounts,
             port=_read_int("EXPORTER_PORT", 9184),
             poll_interval_seconds=_read_int("POLL_INTERVAL_SECONDS", 300),
             lookback_days=_read_int("LOOKBACK_DAYS", 2),
+            pricing_source=pricing_source,
             pricing_file=os.environ.get("PRICING_FILE", "").strip() or None,
+            pricing_url=os.environ.get("PRICING_URL", "").strip() or None,
+            pricing_refresh_seconds=_read_int("PRICING_REFRESH_SECONDS", 86400),
             log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
             openai_api_base=os.environ.get("OPENAI_API_BASE", "https://api.openai.com").rstrip("/"),
             anthropic_api_base=os.environ.get(

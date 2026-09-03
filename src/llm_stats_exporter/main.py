@@ -11,7 +11,7 @@ from prometheus_client import start_http_server
 from llm_stats_exporter import __version__
 from llm_stats_exporter.collector import Collector
 from llm_stats_exporter.config import Config, ConfigError
-from llm_stats_exporter.pricing import Pricing
+from llm_stats_exporter.pricing import LITELLM_PRICING_URL, Pricing, PricingSource
 from llm_stats_exporter.providers import AnthropicProvider, OpenAIProvider
 from llm_stats_exporter.providers.base import Provider
 
@@ -49,8 +49,13 @@ def main() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
 
     providers = build_providers(config)
-    pricing = Pricing.load(config.pricing_file)
-    collector = Collector(providers, pricing, config.lookback_days)
+    pricing_source = PricingSource(
+        source=config.pricing_source,
+        file=config.pricing_file,
+        url=config.pricing_url or LITELLM_PRICING_URL,
+        refresh_seconds=config.pricing_refresh_seconds,
+    )
+    collector = Collector(providers, Pricing({}), config.lookback_days)
 
     start_http_server(config.port)
     log.info(
@@ -64,6 +69,7 @@ def main() -> None:
     )
 
     while not _stop.is_set():
+        collector.pricing = pricing_source.current()
         collector.poll()
         _stop.wait(config.poll_interval_seconds)
 
