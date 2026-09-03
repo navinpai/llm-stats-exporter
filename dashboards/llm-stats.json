@@ -196,8 +196,9 @@
       "description": "Grouped by the exporter's `date` label, so only days inside the lookback window (LOOKBACK_DAYS + today) appear.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 80 },
+          "color": { "mode": "continuous-GrYlRd" },
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "currencyUSD"
         },
         "overrides": []
@@ -205,38 +206,30 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
       "id": 8,
       "options": {
-        "legend": { "displayMode": "hidden" },
-        "orientation": "auto",
-        "showValue": "auto",
-        "tooltip": { "mode": "single" },
-        "xTickLabelRotation": 0
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
       },
       "targets": [
         {
           "expr": "sum by (date) (llm_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
           "instant": true,
+          "legendFormat": "{{date}}",
           "refId": "A"
         }
       ],
       "title": "Billed cost by day",
-      "transformations": [
-        { "id": "labelsToFields", "options": {} },
-        { "id": "merge", "options": {} },
-        { "id": "sortBy", "options": { "sort": [{ "field": "date" }] } },
-        {
-          "id": "organize",
-          "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "Billed (USD)" } }
-        }
-      ],
-      "type": "barchart"
+      "type": "bargauge"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "description": "Token counts × pricing table, summed per day.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 80 },
+          "color": { "mode": "continuous-GrYlRd" },
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "currencyUSD"
         },
         "overrides": []
@@ -244,30 +237,21 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
       "id": 9,
       "options": {
-        "legend": { "displayMode": "hidden" },
-        "orientation": "auto",
-        "showValue": "auto",
-        "tooltip": { "mode": "single" },
-        "xTickLabelRotation": 0
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
       },
       "targets": [
         {
           "expr": "sum by (date) (llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
           "instant": true,
+          "legendFormat": "{{date}}",
           "refId": "A"
         }
       ],
       "title": "Estimated cost by day",
-      "transformations": [
-        { "id": "labelsToFields", "options": {} },
-        { "id": "merge", "options": {} },
-        { "id": "sortBy", "options": { "sort": [{ "field": "date" }] } },
-        {
-          "id": "organize",
-          "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "Estimated (USD)" } }
-        }
-      ],
-      "type": "barchart"
+      "type": "bargauge"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
@@ -440,8 +424,9 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 80 },
+          "color": { "mode": "continuous-GrYlRd" },
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
           "unit": "short"
         },
         "overrides": []
@@ -449,30 +434,21 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 38 },
       "id": 15,
       "options": {
-        "legend": { "displayMode": "hidden" },
-        "orientation": "auto",
-        "showValue": "auto",
-        "tooltip": { "mode": "single" },
-        "xTickLabelRotation": 0
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
       },
       "targets": [
         {
           "expr": "sum by (date) (llm_usage_tokens{provider=~\"$provider\",account=~\"$account\"})",
           "instant": true,
+          "legendFormat": "{{date}}",
           "refId": "A"
         }
       ],
       "title": "Tokens by day",
-      "transformations": [
-        { "id": "labelsToFields", "options": {} },
-        { "id": "merge", "options": {} },
-        { "id": "sortBy", "options": { "sort": [{ "field": "date" }] } },
-        {
-          "id": "organize",
-          "options": { "excludeByName": { "Time": true }, "renameByName": { "Value": "Tokens" } }
-        }
-      ],
-      "type": "barchart"
+      "type": "bargauge"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
