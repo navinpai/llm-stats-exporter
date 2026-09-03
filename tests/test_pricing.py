@@ -149,7 +149,35 @@ def test_pricing_source_file_precedence(tmp_path):
     source = PricingSource(source="litellm", file=str(custom))
     pricing = source.current()
     assert pricing.rates_for("my-model")["input"] == 42.0
-    assert source.current() is pricing  # no network, cached
+    assert source.current() is pricing  # no network, cached until stale
+
+
+def test_pricing_source_file_rereads_when_stale(tmp_path):
+    custom = tmp_path / "pricing.json"
+    custom.write_text(json.dumps({"models": {"my-model": {"input": 42.0}}}))
+    source = PricingSource(file=str(custom), refresh_seconds=0)
+    assert source.current().rates_for("my-model")["input"] == 42.0
+
+    custom.write_text(json.dumps({"models": {"my-model": {"input": 21.0}}}))
+    assert source.current().rates_for("my-model")["input"] == 21.0
+
+
+def test_pricing_source_file_keeps_table_on_reread_failure(tmp_path, caplog):
+    custom = tmp_path / "pricing.json"
+    custom.write_text(json.dumps({"models": {"my-model": {"input": 42.0}}}))
+    source = PricingSource(file=str(custom), refresh_seconds=0)
+    pricing = source.current()
+
+    custom.write_text("{not json")
+    with caplog.at_level(logging.WARNING):
+        assert source.current() is pricing
+    assert "keeping the previous table" in caplog.text
+
+
+def test_pricing_source_file_raises_on_first_load(tmp_path):
+    source = PricingSource(file=str(tmp_path / "missing.json"))
+    with pytest.raises(OSError):
+        source.current()
 
 
 def test_pricing_source_bundled():

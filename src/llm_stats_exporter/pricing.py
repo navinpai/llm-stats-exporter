@@ -107,11 +107,13 @@ def parse_litellm(data: dict[str, object]) -> dict[str, dict[str, float]]:
 
 
 class PricingSource:
-    """Provides the active pricing table, refreshing from LiteLLM when stale.
+    """Provides the active pricing table, refreshing it when stale.
 
-    A ``file`` path or ``source="bundled"`` disables network fetches. When a
-    LiteLLM fetch fails, the previous table (or the bundled snapshot on first
-    failure) is kept and the fetch is retried on the next refresh check.
+    ``source="litellm"`` fetches from the LiteLLM pricing URL; a ``file`` path
+    re-reads the file (so mounted ConfigMap updates are picked up) and
+    ``source="bundled"`` loads the packaged snapshot once. When a refresh
+    fails, the previous table (or the bundled snapshot on first LiteLLM
+    failure) is kept and the refresh is retried on the next check.
     """
 
     def __init__(
@@ -129,17 +131,38 @@ class PricingSource:
         self._last_refresh = 0.0
 
     def current(self) -> Pricing:
-        if self._source in ("file", "bundled"):
+        if self._source == "bundled":
             if self._pricing is None:
-                self._pricing = Pricing.load(self._file)
-                self._mark_refreshed(self._source, len(self._pricing))
+                self._pricing = Pricing.load()
+                self._mark_refreshed("bundled", len(self._pricing))
             return self._pricing
 
         stale = time.monotonic() - self._last_refresh >= self._refresh_seconds
         if self._pricing is None or stale:
-            self._refresh_litellm()
+            if self._source == "file":
+                self._refresh_file()
+            else:
+                self._refresh_litellm()
         assert self._pricing is not None
         return self._pricing
+
+    def _refresh_file(self) -> None:
+        """Re-read the pricing file so e.g. ConfigMap updates are picked up."""
+        assert self._file is not None
+        try:
+            pricing = Pricing.load(self._file)
+        except (OSError, ValueError) as exc:
+            if self._pricing is None:
+                raise  # fail loudly at startup; a bad file should not go unnoticed
+            log.warning(
+                "Failed to re-read pricing file %s (%s); "
+                "keeping the previous table and retrying next cycle.",
+                self._file,
+                exc,
+            )
+            return
+        self._pricing = pricing
+        self._mark_refreshed("file", len(pricing))
 
     def _refresh_litellm(self) -> None:
         try:
