@@ -128,7 +128,9 @@ class PricingSource:
         self._url = url
         self._refresh_seconds = refresh_seconds
         self._pricing: Pricing | None = None
-        self._last_refresh = 0.0
+        # None = never successfully refreshed. A 0.0 sentinel would break on
+        # freshly booted machines, where time.monotonic() is near zero.
+        self._last_refresh: float | None = None
 
     def current(self) -> Pricing:
         if self._source == "bundled":
@@ -137,7 +139,10 @@ class PricingSource:
                 self._mark_refreshed("bundled", len(self._pricing))
             return self._pricing
 
-        stale = time.monotonic() - self._last_refresh >= self._refresh_seconds
+        stale = (
+            self._last_refresh is None
+            or time.monotonic() - self._last_refresh >= self._refresh_seconds
+        )
         if self._pricing is None or stale:
             if self._source == "file":
                 self._refresh_file()
