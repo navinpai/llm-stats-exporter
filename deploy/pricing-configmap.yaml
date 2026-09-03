@@ -1,0 +1,43 @@
+# Custom pricing table via ConfigMap + PRICING_FILE.
+#
+# Useful for negotiated/discounted rates or self-hosted models. The file
+# replaces the whole pricing table (LiteLLM fetching is disabled), so include
+# every model you want priced, or a "default" entry as catch-all.
+#
+# The exporter re-reads the file every PRICING_REFRESH_SECONDS, so ConfigMap
+# edits are picked up without a pod restart (after the kubelet syncs the
+# mounted volume, typically within a minute).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-stats-exporter-pricing
+data:
+  pricing.json: |
+    {
+      "models": {
+        "gpt-4o": {"input": 1.8, "output": 7.2, "cache_read": 0.9},
+        "my-custom-model": {"input": 5.0, "output": 20.0},
+        "default": {"input": 3.0, "output": 15.0}
+      }
+    }
+---
+# Merge the following into the Deployment (see deployment-env-secret.yaml):
+#
+#   spec:
+#     template:
+#       spec:
+#         containers:
+#           - name: exporter
+#             env:
+#               - name: PRICING_FILE
+#                 value: /etc/llm-pricing/pricing.json
+#               - name: PRICING_REFRESH_SECONDS
+#                 value: "300"
+#             volumeMounts:
+#               - name: pricing
+#                 mountPath: /etc/llm-pricing
+#                 readOnly: true
+#         volumes:
+#           - name: pricing
+#             configMap:
+#               name: llm-stats-exporter-pricing

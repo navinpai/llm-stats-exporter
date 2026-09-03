@@ -102,6 +102,13 @@ provide your own table with `PRICING_FILE`:
 Model names match exactly first, then by longest prefix (`gpt-4o-2024-08-06`
 → `gpt-4o`), then fall back to `default` if present.
 
+`PRICING_FILE` replaces the whole table, so it fits negotiated rates or
+self-hosted/custom models — include every model you want priced (or a
+`default` catch-all). The file is re-read every `PRICING_REFRESH_SECONDS`,
+so in Kubernetes you can ship it as a ConfigMap and edits are picked up
+without a restart — see
+[`deploy/pricing-configmap.yaml`](deploy/pricing-configmap.yaml).
+
 ## Running
 
 ### Docker
@@ -125,7 +132,8 @@ curl localhost:9184/metrics
 
 Example manifests live in [`deploy/`](deploy/): a Deployment consuming the key
 from a Secret via `secretKeyRef`, a variant using a Secret mounted as a file
-with `*_FILE`, and a `ServiceMonitor` for the Prometheus Operator.
+with `*_FILE`, a custom pricing table as a ConfigMap, and a `ServiceMonitor`
+for the Prometheus Operator.
 
 ### Prometheus scrape config
 
