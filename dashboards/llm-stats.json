@@ -182,36 +182,6 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "continuous-BlPu" },
-          "min": 0,
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
-      "id": 10,
-      "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "showUnfilled": true
-      },
-      "targets": [
-        {
-          "expr": "topk(10, sum by (api_key_name) (llm_monthly_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}))",
-          "instant": true,
-          "legendFormat": "{{api_key_name}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Top API keys — month-to-date estimated cost",
-      "type": "bargauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "description": "Provider billing line items, summed over the exporter's lookback window.",
       "fieldConfig": {
         "defaults": {
@@ -222,7 +192,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
       "id": 12,
       "options": {
         "displayMode": "basic",
