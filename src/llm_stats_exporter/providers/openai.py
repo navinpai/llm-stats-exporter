@@ -23,8 +23,10 @@ from llm_stats_exporter.records import CostRecord, Snapshot, UsageRecord
 
 log = logging.getLogger(__name__)
 
-# Usage endpoints that report token counts.
+# Usage endpoints that report token counts. Only completions supports
+# grouping by batch/service_tier; the others are always standard-tier.
 TOKEN_OPERATIONS = ("completions", "embeddings", "moderations")
+TIER_OPERATIONS = ("completions",)
 
 TOKEN_FIELD_MAP = {
     "output_tokens": "output",
@@ -48,6 +50,16 @@ def extract_tokens(result: dict[str, Any]) -> dict[str, float]:
         if value:
             totals[token_type] = totals.get(token_type, 0.0) + value
     return totals
+
+
+def normalize_service_tier(result: dict[str, Any]) -> str:
+    """Unify OpenAI's batch flag + service_tier with Anthropic's tier values."""
+    if result.get("batch"):
+        return "batch"
+    tier = result.get("service_tier")
+    if not tier or tier == "default":
+        return "standard"
+    return str(tier)
 
 
 class OpenAIProvider(Provider):
@@ -121,6 +133,8 @@ class OpenAIProvider(Provider):
             ("group_by", "api_key_id"),
             ("group_by", "model"),
         ]
+        if operation in TIER_OPERATIONS:
+            params.extend([("group_by", "batch"), ("group_by", "service_tier")])
         buckets = self._get_paginated(f"{self.api_base}/v1/organization/usage/{operation}", params)
         records: list[UsageRecord] = []
         for bucket in buckets:
@@ -141,6 +155,7 @@ class OpenAIProvider(Provider):
                         api_key_id=api_key_id,
                         api_key_name=self._api_key_name(project_id, api_key_id),
                         model=result.get("model") or UNKNOWN,
+                        service_tier=normalize_service_tier(result),
                         tokens=tokens,
                         requests=requests_count,
                     )

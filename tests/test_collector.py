@@ -47,6 +47,7 @@ USAGE_LABELS = {
     "api_key_id": "key_1",
     "api_key_name": "backend",
     "model": "claude-sonnet-4-6",
+    "service_tier": "standard",
     "date": "2026-09-15",
 }
 

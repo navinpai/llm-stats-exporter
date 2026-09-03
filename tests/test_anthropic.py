@@ -44,6 +44,7 @@ def test_fetch_normalizes_usage_and_costs():
                             "api_key_id": "apikey_1",
                             "workspace_id": "ws_1",
                             "model": "claude-sonnet-4-6",
+                            "service_tier": "batch",
                             "uncached_input_tokens": 1000,
                             "output_tokens": 200,
                             "cache_read_input_tokens": 500,
@@ -92,6 +93,10 @@ def test_fetch_normalizes_usage_and_costs():
         "cache_read": 500.0,
         "cache_write": 100.0,
     }
+    assert usage.service_tier == "batch"
+
+    usage_call = next(call for call in responses.calls if "/usage_report/" in call.request.url)
+    assert "service_tier" in usage_call.request.url
 
     assert len(snapshot.costs) == 1
     cost = snapshot.costs[0]
@@ -136,3 +141,4 @@ def test_usage_pagination_follows_next_page():
     provider = AnthropicProvider("sk-ant-admin-test")
     snapshot = provider.fetch(datetime(2026, 9, 1, tzinfo=UTC), datetime(2026, 9, 4, tzinfo=UTC))
     assert len(snapshot.usage) == 2
+    assert snapshot.usage[0].service_tier == "standard"  # default when absent

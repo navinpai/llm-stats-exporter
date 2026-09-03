@@ -6,6 +6,10 @@ onto the ``project`` labels.
 
 Token type semantics: ``input`` is always *uncached* input tokens, so
 ``input + cache_read`` equals total prompt tokens for both providers.
+
+``service_tier`` is normalized across providers: OpenAI's Batch API flag and
+``default`` tier map to ``batch``/``standard``; Anthropic's tier is passed
+through (``standard``, ``batch``, ``priority``, ...).
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ class UsageRecord:
     api_key_id: str
     api_key_name: str
     model: str
+    service_tier: str = "standard"
     tokens: dict[str, float] = field(default_factory=dict)
     requests: float = 0.0
 

@@ -13,6 +13,7 @@ USAGE_LABELS = [
     "api_key_id",
     "api_key_name",
     "model",
+    "service_tier",
     "date",
 ]
 

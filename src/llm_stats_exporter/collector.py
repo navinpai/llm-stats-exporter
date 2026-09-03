@@ -82,7 +82,9 @@ class Collector:
             monthly_billed: dict[tuple[str, str], float] = {}
 
             for record in snapshot.usage:
-                estimate = self.pricing.estimate_usd(record.model, record.tokens)
+                estimate = self.pricing.estimate_usd(
+                    record.model, record.tokens, record.service_tier
+                )
                 if estimate is not None and record.date.startswith(month):
                     key = (record.api_key_id, record.api_key_name)
                     monthly_estimated[key] = monthly_estimated.get(key, 0.0) + estimate
@@ -98,6 +100,7 @@ class Collector:
                     record.api_key_id,
                     record.api_key_name,
                     record.model,
+                    record.service_tier,
                     record.date,
                 )
                 for token_type, count in record.tokens.items():

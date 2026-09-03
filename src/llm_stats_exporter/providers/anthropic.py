@@ -119,6 +119,7 @@ class AnthropicProvider(Provider):
             ("group_by[]", "api_key_id"),
             ("group_by[]", "workspace_id"),
             ("group_by[]", "model"),
+            ("group_by[]", "service_tier"),
             ("limit", "31"),
         ]
         buckets = self._get_paginated(
@@ -142,6 +143,7 @@ class AnthropicProvider(Provider):
                         api_key_id=key_id,
                         api_key_name=key_names.get(key_id, key_id),
                         model=result.get("model") or UNKNOWN,
+                        service_tier=result.get("service_tier") or "standard",
                         tokens=tokens,
                     )
                 )

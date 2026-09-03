@@ -50,6 +50,14 @@ def test_estimate_unpriced_model_is_none():
     assert Pricing({}).estimate_usd("mystery", {"input": 100}) is None
 
 
+def test_estimate_batch_tier_is_half_price(pricing):
+    tokens = {"input": 1_000_000, "output": 500_000}
+    standard = pricing.estimate_usd("gpt-4o", tokens)
+    assert pricing.estimate_usd("gpt-4o", tokens, "batch") == pytest.approx(standard * 0.5)
+    # Tiers without a known multiplier are estimated at standard rates.
+    assert pricing.estimate_usd("gpt-4o", tokens, "priority") == pytest.approx(standard)
+
+
 def test_load_bundled_pricing():
     pricing = Pricing.load()
     assert pricing.rates_for("claude-sonnet-4-6") is not None

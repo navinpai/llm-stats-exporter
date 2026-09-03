@@ -25,6 +25,11 @@ log = logging.getLogger(__name__)
 
 BILLABLE_CATEGORIES = ("input", "output", "cache_read", "cache_write")
 
+# Both OpenAI and Anthropic bill the Batch API at 50% of standard rates.
+# Other tiers (flex, priority, ...) have model-specific premiums/discounts we
+# don't model; their estimates use standard rates.
+TIER_MULTIPLIERS = {"batch": 0.5}
+
 LITELLM_PRICING_URL = (
     "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
 )
@@ -75,13 +80,16 @@ class Pricing:
             return self._models[best]
         return self._models.get("default")
 
-    def estimate_usd(self, model: str, tokens: dict[str, float]) -> float | None:
+    def estimate_usd(
+        self, model: str, tokens: dict[str, float], service_tier: str = "standard"
+    ) -> float | None:
         """Estimated USD cost for a usage record, or None when model is unpriced."""
         rates = self.rates_for(model)
         if rates is None:
             log.debug("No pricing for model %r; skipping estimate.", model)
             return None
-        return sum(
+        multiplier = TIER_MULTIPLIERS.get(service_tier, 1.0)
+        return multiplier * sum(
             tokens.get(cat, 0.0) / 1_000_000.0 * rates.get(cat, 0.0) for cat in BILLABLE_CATEGORIES
         )
 

@@ -2,7 +2,11 @@ from datetime import UTC, datetime
 
 import responses
 
-from llm_stats_exporter.providers.openai import OpenAIProvider, extract_tokens
+from llm_stats_exporter.providers.openai import (
+    OpenAIProvider,
+    extract_tokens,
+    normalize_service_tier,
+)
 
 API = "https://api.openai.com"
 EMPTY = {"data": [], "has_more": False}
@@ -23,6 +27,15 @@ def test_extract_tokens_normalizes_input_to_uncached():
         "input_audio": 10.0,
         "output_audio": 5.0,
     }
+
+
+def test_normalize_service_tier():
+    assert normalize_service_tier({}) == "standard"
+    assert normalize_service_tier({"service_tier": "default"}) == "standard"
+    assert normalize_service_tier({"service_tier": "flex"}) == "flex"
+    assert normalize_service_tier({"service_tier": "priority"}) == "priority"
+    # The Batch API flag wins over service_tier.
+    assert normalize_service_tier({"batch": True, "service_tier": "default"}) == "batch"
 
 
 def _mock_static_endpoints():
@@ -52,7 +65,15 @@ def test_fetch_normalizes_usage_and_costs():
                             "input_cached_tokens": 400,
                             "output_tokens": 200,
                             "num_model_requests": 7,
-                        }
+                        },
+                        {
+                            "project_id": "proj_1",
+                            "api_key_id": "key_1",
+                            "model": "gpt-4o",
+                            "batch": True,
+                            "input_tokens": 5000,
+                            "num_model_requests": 1,
+                        },
                     ],
                 }
             ],
@@ -85,7 +106,7 @@ def test_fetch_normalizes_usage_and_costs():
     provider = OpenAIProvider("sk-admin-test")
     snapshot = provider.fetch(datetime(2026, 9, 1, tzinfo=UTC), datetime(2026, 9, 4, tzinfo=UTC))
 
-    assert len(snapshot.usage) == 1
+    assert len(snapshot.usage) == 2
     usage = snapshot.usage[0]
     assert usage.date == "2026-09-02"
     assert usage.operation == "completions"
@@ -94,6 +115,18 @@ def test_fetch_normalizes_usage_and_costs():
     assert usage.model == "gpt-4o"
     assert usage.requests == 7
     assert usage.tokens == {"input": 600.0, "cache_read": 400.0, "output": 200.0}
+    assert usage.service_tier == "standard"
+    assert snapshot.usage[1].service_tier == "batch"
+
+    completions_call = next(
+        call for call in responses.calls if "/usage/completions" in call.request.url
+    )
+    assert "group_by=batch" in completions_call.request.url
+    assert "group_by=service_tier" in completions_call.request.url
+    embeddings_call = next(
+        call for call in responses.calls if "/usage/embeddings" in call.request.url
+    )
+    assert "group_by=batch" not in embeddings_call.request.url
 
     assert len(snapshot.costs) == 1
     cost = snapshot.costs[0]
