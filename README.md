@@ -128,7 +128,34 @@ OPENAI_ADMIN_KEY=sk-admin-... uv run llm-stats-exporter
 curl localhost:9184/metrics
 ```
 
-### Kubernetes
+### Kubernetes (Helm)
+
+The chart is published to GHCR as an OCI artifact alongside the image:
+
+```sh
+helm install llm-stats-exporter oci://ghcr.io/navinpai/charts/llm-stats-exporter \
+  --set adminKeys.OPENAI_ADMIN_KEY=sk-admin-... \
+  --set adminKeys.ANTHROPIC_ADMIN_KEY=sk-ant-admin...
+```
+
+`adminKeys` entries are env-var names, so extra accounts follow the same
+contract (`adminKeys.ANTHROPIC_ADMIN_KEY_PROD=...`). For a realistic setup,
+use a values file:
+
+```yaml
+existingSecret: my-llm-keys      # keys are env var names; replaces adminKeys
+serviceMonitor:
+  enabled: true
+config:
+  pricing:
+    custom:                      # optional custom pricing table
+      gpt-4o: {input: 1.8, output: 7.2}
+      default: {input: 3.0, output: 15.0}
+```
+
+See [`chart/values.yaml`](chart/values.yaml) for all options.
+
+### Kubernetes (plain manifests)
 
 Example manifests live in [`deploy/`](deploy/): a Deployment consuming the key
 from a Secret via `secretKeyRef`, a variant using a Secret mounted as a file
