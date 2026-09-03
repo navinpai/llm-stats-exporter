@@ -368,7 +368,7 @@
           }
         ]
       },
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 30 },
+      "gridPos": { "h": 7, "w": 16, "x": 0, "y": 30 },
       "id": 13,
       "options": {
         "footer": { "show": false },
@@ -391,6 +391,37 @@
         }
       ],
       "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Summed over the exporter's lookback window. Batch traffic is estimated at 50% of standard rates; flex/priority use standard rates (billed cost is the source of truth there).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "continuous-BlPu" },
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 30 },
+      "id": 26,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "expr": "sum by (service_tier) (llm_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"})",
+          "instant": true,
+          "legendFormat": "{{service_tier}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Estimated cost by service tier (window)",
+      "type": "bargauge"
     },
     {
       "collapsed": false,

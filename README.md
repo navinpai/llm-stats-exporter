@@ -13,8 +13,8 @@ single metric namespace so cross-provider dashboards and cost rollups are trivia
 
 | Metric | Type | Labels | Description |
 |---|---|---|---|
-| `llm_usage_tokens` | Gauge | `provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, date, token_type` | Tokens in the daily bucket. `token_type` is one of `input`, `output`, `cache_read`, `cache_write`, `input_audio`, `output_audio`. `input` is always **uncached** input; `input + cache_read` = total prompt tokens. |
-| `llm_requests` | Gauge | `provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, date` | Model requests in the daily bucket (OpenAI only; Anthropic's usage API doesn't report it). |
+| `llm_usage_tokens` | Gauge | `provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, service_tier, date, token_type` | Tokens in the daily bucket. `token_type` is one of `input`, `output`, `cache_read`, `cache_write`, `input_audio`, `output_audio`. `input` is always **uncached** input; `input + cache_read` = total prompt tokens. |
+| `llm_requests` | Gauge | `provider, account, operation, project_id, project_name, api_key_id, api_key_name, model, service_tier, date` | Model requests in the daily bucket (OpenAI only; Anthropic's usage API doesn't report it). |
 | `llm_estimated_cost_usd` | Gauge | same as `llm_requests` | Estimated USD cost from token counts × pricing table. This is the only per-key/per-model cost signal, since provider cost APIs don't break down by key. |
 | `llm_cost_usd` | Gauge | `provider, account, project_id, project_name, line_item, date` | Billed USD cost from the provider's cost API. Anthropic workspaces map to `project_*`; Anthropic `description` and OpenAI `line_item` map to `line_item`. |
 | `llm_monthly_estimated_cost_usd` | Gauge | `provider, account, api_key_id, api_key_name` | Month-to-date estimated cost per API key. |
@@ -29,6 +29,14 @@ single metric namespace so cross-provider dashboards and cost rollups are trivia
 Daily metrics use a `date` label (`YYYY-MM-DD`) and are re-set every poll for
 the lookback window, so late-arriving usage is corrected in place. If a
 provider poll fails, its last good snapshot is kept and `llm_exporter_up` drops to 0.
+
+`service_tier` is normalized across providers: OpenAI's Batch API flag maps to
+`batch` and its `default` tier to `standard` (`flex`/`priority` pass through);
+Anthropic's tier (`standard`, `batch`, `priority`, ...) passes through.
+OpenAI embeddings/moderations don't report a tier and are always `standard`.
+Batch-tier estimates are priced at 50% of standard rates (both providers'
+documented Batch API discount); other tiers use standard rates, so for
+`flex`/`priority` traffic the billed cost metrics are the source of truth.
 
 ## Requirements
 
