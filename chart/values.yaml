@@ -41,6 +41,10 @@ extraEnv: []
 
 service:
   port: 9184
+  # Service annotations, e.g. for annotation-based scraping:
+  #   prometheus.io/scrape: "true"
+  #   prometheus.io/port: "9184"
+  annotations: {}
 
 serviceMonitor:
   enabled: false

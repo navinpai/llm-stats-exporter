@@ -4,6 +4,10 @@ metadata:
   name: {{ include "llm-stats-exporter.fullname" . }}
   labels:
     {{- include "llm-stats-exporter.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     {{- include "llm-stats-exporter.selectorLabels" . | nindent 4 }}
