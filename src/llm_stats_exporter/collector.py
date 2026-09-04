@@ -56,6 +56,17 @@ class Collector:
                         provider.account,
                         len(kept),
                     )
+                if snapshot.claude_code is None:
+                    previous = self._snapshots.get(key)
+                    kept_cc = previous.claude_code or [] if previous else []
+                    snapshot = replace(snapshot, claude_code=kept_cc)
+                    metrics.POLL_ERRORS.labels(*key).inc()
+                    log.warning(
+                        "Claude Code data unavailable for %s/%s; keeping %d previous record(s).",
+                        provider.name,
+                        provider.account,
+                        len(kept_cc),
+                    )
                 self._snapshots[key] = snapshot
                 metrics.UP.labels(*key).set(1)
                 metrics.LAST_SUCCESS.labels(*key).set(time.time())
@@ -89,6 +100,13 @@ class Collector:
         metrics.BILLED_COST.clear()
         metrics.MONTHLY_ESTIMATED_COST.clear()
         metrics.MONTHLY_BILLED_COST.clear()
+        metrics.CLAUDE_CODE_SESSIONS.clear()
+        metrics.CLAUDE_CODE_LINES.clear()
+        metrics.CLAUDE_CODE_COMMITS.clear()
+        metrics.CLAUDE_CODE_PULL_REQUESTS.clear()
+        metrics.CLAUDE_CODE_TOKENS.clear()
+        metrics.CLAUDE_CODE_COST.clear()
+        metrics.CLAUDE_CODE_MONTHLY_COST.clear()
 
         for (provider_name, account), snapshot in self._snapshots.items():
             monthly_estimated: dict[tuple[str, str], float] = {}
@@ -138,6 +156,8 @@ class Collector:
                     cost.date,
                 ).set(cost.amount_usd)
 
+            self._export_claude_code(provider_name, account, snapshot, month, daily_cutoff)
+
             for (key_id, key_name), total in monthly_estimated.items():
                 metrics.MONTHLY_ESTIMATED_COST.labels(provider_name, account, key_id, key_name).set(
                     total
@@ -146,3 +166,37 @@ class Collector:
                 metrics.MONTHLY_BILLED_COST.labels(
                     provider_name, account, project_id, project_name
                 ).set(total)
+
+    def _export_claude_code(
+        self, provider_name: str, account: str, snapshot: Snapshot, month: str, daily_cutoff: str
+    ) -> None:
+        monthly: dict[tuple[str, str], float] = {}
+        for cc in snapshot.claude_code or []:
+            cost_usd = sum(m.estimated_cost_usd for m in cc.models)
+            if cost_usd and cc.date.startswith(month):
+                actor_key = (cc.actor, cc.actor_type)
+                monthly[actor_key] = monthly.get(actor_key, 0.0) + cost_usd
+            if cc.date < daily_cutoff:
+                continue
+            labels = (provider_name, account, cc.actor, cc.actor_type, cc.date)
+            if cc.sessions:
+                metrics.CLAUDE_CODE_SESSIONS.labels(*labels).set(cc.sessions)
+            if cc.lines_added:
+                metrics.CLAUDE_CODE_LINES.labels(*labels, "added").set(cc.lines_added)
+            if cc.lines_removed:
+                metrics.CLAUDE_CODE_LINES.labels(*labels, "removed").set(cc.lines_removed)
+            if cc.commits:
+                metrics.CLAUDE_CODE_COMMITS.labels(*labels).set(cc.commits)
+            if cc.pull_requests:
+                metrics.CLAUDE_CODE_PULL_REQUESTS.labels(*labels).set(cc.pull_requests)
+            for usage in cc.models:
+                for token_type, count in usage.tokens.items():
+                    metrics.CLAUDE_CODE_TOKENS.labels(*labels, usage.model, token_type).set(count)
+                if usage.estimated_cost_usd:
+                    metrics.CLAUDE_CODE_COST.labels(*labels, usage.model).set(
+                        usage.estimated_cost_usd
+                    )
+        for (actor, actor_type), total in monthly.items():
+            metrics.CLAUDE_CODE_MONTHLY_COST.labels(provider_name, account, actor, actor_type).set(
+                total
+            )

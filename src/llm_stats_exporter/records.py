@@ -43,10 +43,36 @@ class CostRecord:
 
 
 @dataclass(frozen=True)
+class ClaudeCodeModelUsage:
+    model: str
+    tokens: dict[str, float] = field(default_factory=dict)
+    estimated_cost_usd: float = 0.0
+
+
+@dataclass(frozen=True)
+class ClaudeCodeRecord:
+    """One member (or API key) x day from Anthropic's Claude Code analytics API.
+
+    ``actor`` is the member email or API key name; costs are Anthropic's
+    estimates (subscription usage has no billed line items)."""
+
+    date: str
+    actor: str
+    actor_type: str  # "user" | "api_key"
+    sessions: float = 0.0
+    lines_added: float = 0.0
+    lines_removed: float = 0.0
+    commits: float = 0.0
+    pull_requests: float = 0.0
+    models: list[ClaudeCodeModelUsage] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class Snapshot:
-    """``costs=None`` means the cost fetch failed (unknown), as opposed to
-    ``[]`` (fetched fine, genuinely no costs). The collector keeps the
-    previous cost records when costs are unknown."""
+    """``costs=None`` / ``claude_code=None`` mean that fetch failed (unknown),
+    as opposed to ``[]`` (fetched fine, genuinely no data). The collector
+    keeps the previous records when a section is unknown."""
 
     usage: list[UsageRecord]
     costs: list[CostRecord] | None
+    claude_code: list[ClaudeCodeRecord] | None = field(default_factory=list)

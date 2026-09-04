@@ -48,6 +48,43 @@ MONTHLY_BILLED_COST = Gauge(
     "Billed USD cost for the current calendar month, per project/workspace.",
     ["provider", "account", "project_id", "project_name"],
 )
+CLAUDE_CODE_LABELS = ["provider", "account", "actor", "actor_type", "date"]
+
+CLAUDE_CODE_SESSIONS = Gauge(
+    "llm_claude_code_sessions",
+    "Claude Code sessions in the daily bucket, per org member or API key (Anthropic only).",
+    CLAUDE_CODE_LABELS,
+)
+CLAUDE_CODE_LINES = Gauge(
+    "llm_claude_code_lines_of_code",
+    "Lines of code added/removed by Claude Code in the daily bucket.",
+    [*CLAUDE_CODE_LABELS, "type"],
+)
+CLAUDE_CODE_COMMITS = Gauge(
+    "llm_claude_code_commits",
+    "Commits created by Claude Code in the daily bucket.",
+    CLAUDE_CODE_LABELS,
+)
+CLAUDE_CODE_PULL_REQUESTS = Gauge(
+    "llm_claude_code_pull_requests",
+    "Pull requests created by Claude Code in the daily bucket.",
+    CLAUDE_CODE_LABELS,
+)
+CLAUDE_CODE_TOKENS = Gauge(
+    "llm_claude_code_tokens",
+    "Tokens consumed by Claude Code in the daily bucket.",
+    [*CLAUDE_CODE_LABELS, "model", "token_type"],
+)
+CLAUDE_CODE_COST = Gauge(
+    "llm_claude_code_estimated_cost_usd",
+    "Anthropic-estimated USD cost of Claude Code usage in the daily bucket.",
+    [*CLAUDE_CODE_LABELS, "model"],
+)
+CLAUDE_CODE_MONTHLY_COST = Gauge(
+    "llm_claude_code_monthly_estimated_cost_usd",
+    "Anthropic-estimated USD Claude Code cost for the current calendar month, per actor.",
+    ["provider", "account", "actor", "actor_type"],
+)
 UP = Gauge(
     "llm_exporter_up",
     "1 if the last poll cycle for this provider account succeeded, else 0.",

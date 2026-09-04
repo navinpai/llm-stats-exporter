@@ -5,6 +5,7 @@ Uses the org-level Usage & Cost Admin API (requires an admin key,
 
 - ``/v1/organizations/usage_report/messages`` — tokens per api_key/workspace/model
 - ``/v1/organizations/cost_report`` — billed cost per workspace/description
+- ``/v1/organizations/usage_report/claude_code`` — Claude Code sessions/cost per member
 - ``/v1/organizations/api_keys`` / ``/v1/organizations/workspaces`` — name lookups
 
 Docs: https://docs.anthropic.com/en/api/usage-cost-api
@@ -13,13 +14,19 @@ Docs: https://docs.anthropic.com/en/api/usage-cost-api
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests
 
 from llm_stats_exporter.providers.base import UNKNOWN, Provider, to_date
-from llm_stats_exporter.records import CostRecord, Snapshot, UsageRecord
+from llm_stats_exporter.records import (
+    ClaudeCodeModelUsage,
+    ClaudeCodeRecord,
+    CostRecord,
+    Snapshot,
+    UsageRecord,
+)
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +78,8 @@ class AnthropicProvider(Provider):
         super().__init__(account)
         self.api_base = api_base.rstrip("/")
         self.session.headers.update({"x-api-key": admin_key, "anthropic-version": "2023-06-01"})
+        self._cc_supported = True
+        self._cc_cache: dict[str, list[ClaudeCodeRecord]] = {}
 
     def fetch(self, start: datetime, end: datetime) -> Snapshot:
         starting_at = start.strftime(ISO_FMT)
@@ -80,6 +89,7 @@ class AnthropicProvider(Provider):
         return Snapshot(
             usage=self._fetch_usage(starting_at, ending_at, key_names, workspace_names),
             costs=self._fetch_costs(starting_at, ending_at, workspace_names),
+            claude_code=self._fetch_claude_code(start, end),
         )
 
     def _fetch_names(self, path: str, kind: str) -> dict[str, str]:
@@ -148,6 +158,88 @@ class AnthropicProvider(Provider):
                     )
                 )
         return records
+
+    def _fetch_claude_code(
+        self, start: datetime, end: datetime
+    ) -> list[ClaudeCodeRecord] | None:
+        """The Claude Code report returns one day per call, so iterate the window.
+
+        Days more than two days behind ``end`` no longer change and are served
+        from an in-memory cache to keep the call count per poll low."""
+        if not self._cc_supported:
+            return []
+        stable_cutoff = (end - timedelta(days=3)).strftime("%Y-%m-%d")
+        records: list[ClaudeCodeRecord] = []
+        day = start
+        try:
+            while day < end:
+                date = day.strftime("%Y-%m-%d")
+                day += timedelta(days=1)
+                cached = self._cc_cache.get(date)
+                if cached is not None and date < stable_cutoff:
+                    records.extend(cached)
+                    continue
+                day_records = [
+                    self._claude_code_record(item)
+                    for item in self._get_paginated(
+                        f"{self.api_base}/v1/organizations/usage_report/claude_code",
+                        [("starting_at", date), ("limit", "100")],
+                    )
+                ]
+                self._cc_cache[date] = day_records
+                records.extend(day_records)
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status in (403, 404):
+                log.warning("Claude Code analytics not available for this org (disabling): %s", exc)
+                self._cc_supported = False
+                return []
+            log.warning("Claude Code report fetch failed (keeping previous data): %s", exc)
+            return None
+        except requests.RequestException as exc:
+            log.warning("Claude Code report fetch failed (keeping previous data): %s", exc)
+            return None
+        window_start = start.strftime("%Y-%m-%d")
+        self._cc_cache = {d: r for d, r in self._cc_cache.items() if d >= window_start}
+        return records
+
+    def _claude_code_record(self, item: dict[str, Any]) -> ClaudeCodeRecord:
+        actor = item.get("actor") or {}
+        core = item.get("core_metrics") or {}
+        lines = core.get("lines_of_code") or {}
+        models: list[ClaudeCodeModelUsage] = []
+        for entry in item.get("model_breakdown") or []:
+            raw_tokens = entry.get("tokens") or {}
+            tokens = {
+                norm: float(raw_tokens.get(raw) or 0)
+                for raw, norm in (
+                    ("input", "input"),
+                    ("output", "output"),
+                    ("cache_read", "cache_read"),
+                    ("cache_creation", "cache_write"),
+                )
+                if raw_tokens.get(raw)
+            }
+            cost = entry.get("estimated_cost") or {}
+            models.append(
+                ClaudeCodeModelUsage(
+                    model=entry.get("model") or UNKNOWN,
+                    tokens=tokens,
+                    # Estimated cost is reported in cents.
+                    estimated_cost_usd=float(cost.get("amount") or 0) / 100.0,
+                )
+            )
+        return ClaudeCodeRecord(
+            date=to_date(item.get("date", "")),
+            actor=actor.get("email_address") or actor.get("api_key_name") or UNKNOWN,
+            actor_type="user" if actor.get("type") == "user_actor" else "api_key",
+            sessions=float(core.get("num_sessions") or 0),
+            lines_added=float(lines.get("added") or 0),
+            lines_removed=float(lines.get("removed") or 0),
+            commits=float(core.get("commits_by_claude_code") or 0),
+            pull_requests=float(core.get("pull_requests_by_claude_code") or 0),
+            models=models,
+        )
 
     def _fetch_costs(
         self, starting_at: str, ending_at: str, workspace_names: dict[str, str]
