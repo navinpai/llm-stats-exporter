@@ -34,7 +34,11 @@ single metric namespace so cross-provider dashboards and cost rollups are trivia
 | `llm_exporter_build_info` | Gauge | `version` | Always 1; exporter version. |
 
 Daily metrics use a `date` label (`YYYY-MM-DD`) and are re-set every poll for
-the lookback window, so late-arriving usage is corrected in place. If a
+the lookback window, so late-arriving usage is corrected in place. The
+`llm_claude_code_*` daily metrics are the exception: they always cover the
+trailing 30 days (matching the console's Claude Code page), independent of
+`LOOKBACK_DAYS` — days older than the stable cutoff are served from an
+in-memory cache, so this costs only ~3 extra API calls per poll. If a
 provider poll fails, its last good snapshot is kept and `llm_exporter_up` drops to 0.
 
 `service_tier` is normalized across providers: OpenAI's Batch API flag maps to
