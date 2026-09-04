@@ -159,9 +159,7 @@ class AnthropicProvider(Provider):
                 )
         return records
 
-    def _fetch_claude_code(
-        self, start: datetime, end: datetime
-    ) -> list[ClaudeCodeRecord] | None:
+    def _fetch_claude_code(self, start: datetime, end: datetime) -> list[ClaudeCodeRecord] | None:
         """The Claude Code report returns one day per call, so iterate the window.
 
         Days more than two days behind ``end`` no longer change and are served
