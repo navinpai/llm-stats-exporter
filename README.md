@@ -19,6 +19,13 @@ single metric namespace so cross-provider dashboards and cost rollups are trivia
 | `llm_cost_usd` | Gauge | `provider, account, project_id, project_name, line_item, date` | Billed USD cost from the provider's cost API. Anthropic workspaces map to `project_*`; Anthropic `description` and OpenAI `line_item` map to `line_item`. |
 | `llm_monthly_estimated_cost_usd` | Gauge | `provider, account, api_key_id, api_key_name` | Month-to-date estimated cost per API key. |
 | `llm_monthly_cost_usd` | Gauge | `provider, account, project_id, project_name` | Month-to-date billed cost per project/workspace. |
+| `llm_claude_code_sessions` | Gauge | `provider, account, actor, actor_type, date` | Claude Code sessions in the daily bucket (Anthropic only). `actor` is the org member email or API key name; `actor_type` is `user` or `api_key`. |
+| `llm_claude_code_lines_of_code` | Gauge | same as sessions + `type` | Lines of code added/removed by Claude Code (`type` is `added` or `removed`). |
+| `llm_claude_code_commits` | Gauge | same as sessions | Commits created by Claude Code. |
+| `llm_claude_code_pull_requests` | Gauge | same as sessions | Pull requests created by Claude Code. |
+| `llm_claude_code_tokens` | Gauge | same as sessions + `model, token_type` | Tokens consumed by Claude Code. |
+| `llm_claude_code_estimated_cost_usd` | Gauge | same as sessions + `model` | Anthropic-estimated USD cost of Claude Code usage. Covers subscription-seat members whose usage never appears in `llm_cost_usd`. API-key actors *also* appear in `llm_cost_usd` as real billed spend — don't sum the two families together. |
+| `llm_claude_code_monthly_estimated_cost_usd` | Gauge | `provider, account, actor, actor_type` | Month-to-date estimated Claude Code cost per actor. |
 | `llm_exporter_up` | Gauge | `provider, account` | 1 if the last poll for the provider account succeeded. |
 | `llm_exporter_last_success_timestamp_seconds` | Gauge | `provider, account` | Unix time of last successful poll. |
 | `llm_exporter_poll_errors_total` | Counter | `provider, account` | Failed poll cycles. |
