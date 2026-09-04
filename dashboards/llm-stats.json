@@ -389,7 +389,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Anthropic's estimated cost of Claude Code usage this month, per org member or API key. Covers subscription seats that never appear in billed cost.",
+      "description": "Anthropic's estimated cost of Claude Code usage over the exporter's trailing 30-day window, per org member or API key. Matches the console's Claude Code page. Covers subscription seats that never appear in billed cost.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "continuous-BlPu" },
@@ -409,13 +409,13 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum by (actor) (llm_claude_code_monthly_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}))",
+          "expr": "topk(10, sum by (actor) (llm_claude_code_estimated_cost_usd{provider=~\"$provider\",account=~\"$account\"}))",
           "instant": true,
           "legendFormat": "{{actor}}",
           "refId": "A"
         }
       ],
-      "title": "Claude Code — month-to-date estimated cost by member",
+      "title": "Claude Code — estimated cost by member (30d)",
       "type": "bargauge"
     },
     {
@@ -450,7 +450,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Summed over the exporter's lookback window.",
+      "description": "Summed over the exporter's trailing 30-day Claude Code window.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "continuous-BlPu" },
@@ -476,12 +476,12 @@
           "refId": "A"
         }
       ],
-      "title": "Sessions by member (window)",
+      "title": "Sessions by member (30d)",
       "type": "bargauge"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Lines added by Claude Code, summed over the exporter's lookback window.",
+      "description": "Lines added by Claude Code, summed over the exporter's trailing 30-day Claude Code window.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "continuous-BlPu" },
@@ -507,12 +507,12 @@
           "refId": "A"
         }
       ],
-      "title": "Lines added by member (window)",
+      "title": "Lines added by member (30d)",
       "type": "bargauge"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "description": "Summed over the exporter's lookback window.",
+      "description": "Summed over the exporter's trailing 30-day Claude Code window.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "continuous-BlPu" },
@@ -538,7 +538,7 @@
           "refId": "A"
         }
       ],
-      "title": "Claude Code tokens by model (window)",
+      "title": "Claude Code tokens by model (30d)",
       "type": "bargauge"
     },
     {
