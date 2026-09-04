@@ -62,7 +62,7 @@ CLAUDE_CODE = ClaudeCodeRecord(
     ],
 )
 OLD_CLAUDE_CODE = ClaudeCodeRecord(
-    date="2026-09-01",  # inside the month, outside the 2-day lookback
+    date="2026-09-01",  # before the 2-day lookback; still exported daily
     actor="dev@example.com",
     actor_type="user",
     sessions=2.0,
@@ -276,8 +276,9 @@ def test_claude_code_daily_and_monthly_metrics(pricing):
         "llm_claude_code_estimated_cost_usd", {**CC_LABELS, "model": "claude-sonnet-4-6"}
     ) == pytest.approx(38.66)
 
-    # Outside the lookback: no daily series, but counts toward the month.
-    assert sample("llm_claude_code_sessions", {**CC_LABELS, "date": "2026-09-01"}) is None
+    # Claude Code daily series ignore the lookback cutoff: every fetched
+    # day is exported so dashboards can show the full 30-day window.
+    assert sample("llm_claude_code_sessions", {**CC_LABELS, "date": "2026-09-01"}) == 2.0
     assert sample(
         "llm_claude_code_monthly_estimated_cost_usd",
         {k: v for k, v in CC_LABELS.items() if k != "date"},

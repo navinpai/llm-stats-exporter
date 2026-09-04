@@ -74,10 +74,12 @@ class AnthropicProvider(Provider):
         admin_key: str,
         api_base: str = "https://api.anthropic.com",
         account: str = "default",
+        claude_code_days: int = 30,
     ) -> None:
         super().__init__(account)
         self.api_base = api_base.rstrip("/")
         self.session.headers.update({"x-api-key": admin_key, "anthropic-version": "2023-06-01"})
+        self.claude_code_days = claude_code_days
         self._cc_supported = True
         self._cc_cache: dict[str, list[ClaudeCodeRecord]] = {}
 
@@ -162,13 +164,17 @@ class AnthropicProvider(Provider):
     def _fetch_claude_code(self, start: datetime, end: datetime) -> list[ClaudeCodeRecord] | None:
         """The Claude Code report returns one day per call, so iterate the window.
 
-        Days more than two days behind ``end`` no longer change and are served
-        from an in-memory cache to keep the call count per poll low."""
+        The window is extended to at least the trailing ``claude_code_days``
+        (the console's Claude Code page shows 30 days), independent of the
+        exporter's fetch window. Days more than two days behind ``end`` no
+        longer change and are served from an in-memory cache to keep the call
+        count per poll low."""
         if not self._cc_supported:
             return []
+        cc_start = min(start, end - timedelta(days=self.claude_code_days + 1))
         stable_cutoff = (end - timedelta(days=3)).strftime("%Y-%m-%d")
         records: list[ClaudeCodeRecord] = []
-        day = start
+        day = cc_start
         try:
             while day < end:
                 date = day.strftime("%Y-%m-%d")
@@ -197,7 +203,7 @@ class AnthropicProvider(Provider):
         except requests.RequestException as exc:
             log.warning("Claude Code report fetch failed (keeping previous data): %s", exc)
             return None
-        window_start = start.strftime("%Y-%m-%d")
+        window_start = cc_start.strftime("%Y-%m-%d")
         self._cc_cache = {d: r for d, r in self._cc_cache.items() if d >= window_start}
         return records
 

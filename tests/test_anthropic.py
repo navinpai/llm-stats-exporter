@@ -157,7 +157,7 @@ def test_claude_code_report_normalizes_actors_and_costs():
         json={"data": [CLAUDE_CODE_ITEM], "has_more": False},
     )
 
-    provider = AnthropicProvider("sk-ant-admin-test")
+    provider = AnthropicProvider("sk-ant-admin-test", claude_code_days=0)
     snapshot = provider.fetch(datetime(2026, 9, 2, tzinfo=UTC), datetime(2026, 9, 3, tzinfo=UTC))
 
     assert snapshot.claude_code is not None
@@ -192,7 +192,7 @@ def test_claude_code_report_disabled_after_403():
     _mock_base_endpoints()
     responses.get(f"{API}/v1/organizations/usage_report/claude_code", status=403)
 
-    provider = AnthropicProvider("sk-ant-admin-test")
+    provider = AnthropicProvider("sk-ant-admin-test", claude_code_days=0)
     window = (datetime(2026, 9, 2, tzinfo=UTC), datetime(2026, 9, 3, tzinfo=UTC))
     assert provider.fetch(*window).claude_code == []
     assert provider.fetch(*window).claude_code == []
@@ -205,7 +205,7 @@ def test_claude_code_report_transient_failure_returns_none():
     _mock_base_endpoints()
     responses.get(f"{API}/v1/organizations/usage_report/claude_code", status=500)
 
-    provider = AnthropicProvider("sk-ant-admin-test")
+    provider = AnthropicProvider("sk-ant-admin-test", claude_code_days=0)
     snapshot = provider.fetch(datetime(2026, 9, 2, tzinfo=UTC), datetime(2026, 9, 3, tzinfo=UTC))
     assert snapshot.claude_code is None
 
@@ -218,7 +218,7 @@ def test_claude_code_report_caches_stable_days():
         json={"data": [CLAUDE_CODE_ITEM], "has_more": False},
     )
 
-    provider = AnthropicProvider("sk-ant-admin-test")
+    provider = AnthropicProvider("sk-ant-admin-test", claude_code_days=0)
     window = (datetime(2026, 9, 1, tzinfo=UTC), datetime(2026, 9, 5, tzinfo=UTC))
     first = provider.fetch(*window).claude_code
     calls_after_first = len([c for c in responses.calls if "/claude_code" in c.request.url])
@@ -230,6 +230,23 @@ def test_claude_code_report_caches_stable_days():
     # trailing days are refetched.
     assert calls_after_second == 7
     assert first == second
+
+
+@responses.activate
+def test_claude_code_report_covers_trailing_30_days():
+    _mock_base_endpoints()
+    responses.get(
+        f"{API}/v1/organizations/usage_report/claude_code",
+        json={"data": [], "has_more": False},
+    )
+
+    provider = AnthropicProvider("sk-ant-admin-test")
+    provider.fetch(datetime(2026, 9, 2, tzinfo=UTC), datetime(2026, 9, 3, tzinfo=UTC))
+
+    cc_calls = [c for c in responses.calls if "/claude_code" in c.request.url]
+    assert len(cc_calls) == 31  # window extends past the fetch start
+    assert "starting_at=2026-08-03" in cc_calls[0].request.url
+    assert "starting_at=2026-09-02" in cc_calls[-1].request.url
 
 
 @responses.activate

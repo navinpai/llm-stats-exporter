@@ -156,7 +156,7 @@ class Collector:
                     cost.date,
                 ).set(cost.amount_usd)
 
-            self._export_claude_code(provider_name, account, snapshot, month, daily_cutoff)
+            self._export_claude_code(provider_name, account, snapshot, month)
 
             for (key_id, key_name), total in monthly_estimated.items():
                 metrics.MONTHLY_ESTIMATED_COST.labels(provider_name, account, key_id, key_name).set(
@@ -168,16 +168,16 @@ class Collector:
                 ).set(total)
 
     def _export_claude_code(
-        self, provider_name: str, account: str, snapshot: Snapshot, month: str, daily_cutoff: str
+        self, provider_name: str, account: str, snapshot: Snapshot, month: str
     ) -> None:
+        """Claude Code records are exported for every fetched day (the provider
+        fetches a trailing 30-day window), not just the daily lookback."""
         monthly: dict[tuple[str, str], float] = {}
         for cc in snapshot.claude_code or []:
             cost_usd = sum(m.estimated_cost_usd for m in cc.models)
             if cost_usd and cc.date.startswith(month):
                 actor_key = (cc.actor, cc.actor_type)
                 monthly[actor_key] = monthly.get(actor_key, 0.0) + cost_usd
-            if cc.date < daily_cutoff:
-                continue
             labels = (provider_name, account, cc.actor, cc.actor_type, cc.date)
             if cc.sessions:
                 metrics.CLAUDE_CODE_SESSIONS.labels(*labels).set(cc.sessions)
