@@ -6,7 +6,13 @@ from prometheus_client import REGISTRY
 from llm_stats_exporter.collector import Collector, fetch_window
 from llm_stats_exporter.pricing import Pricing
 from llm_stats_exporter.providers.base import Provider
-from llm_stats_exporter.records import CostRecord, Snapshot, UsageRecord
+from llm_stats_exporter.records import (
+    ClaudeCodeModelUsage,
+    ClaudeCodeRecord,
+    CostRecord,
+    Snapshot,
+    UsageRecord,
+)
 
 NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 
@@ -37,6 +43,39 @@ COST = CostRecord(
 OLD_COST = CostRecord(
     date="2026-09-01", project_id="ws_1", project_name="prod", line_item="li", amount_usd=7.0
 )
+
+CLAUDE_CODE = ClaudeCodeRecord(
+    date="2026-09-15",
+    actor="dev@example.com",
+    actor_type="user",
+    sessions=13.0,
+    lines_added=120.0,
+    lines_removed=30.0,
+    commits=4.0,
+    pull_requests=1.0,
+    models=[
+        ClaudeCodeModelUsage(
+            model="claude-sonnet-4-6",
+            tokens={"input": 540.0, "output": 1312.0},
+            estimated_cost_usd=38.66,
+        )
+    ],
+)
+OLD_CLAUDE_CODE = ClaudeCodeRecord(
+    date="2026-09-01",  # inside the month, outside the 2-day lookback
+    actor="dev@example.com",
+    actor_type="user",
+    sessions=2.0,
+    models=[ClaudeCodeModelUsage(model="claude-sonnet-4-6", estimated_cost_usd=10.0)],
+)
+
+CC_LABELS = {
+    "provider": "fake",
+    "account": "default",
+    "actor": "dev@example.com",
+    "actor_type": "user",
+    "date": "2026-09-15",
+}
 
 USAGE_LABELS = {
     "provider": "fake",
@@ -212,6 +251,52 @@ def test_unknown_costs_with_no_previous_snapshot_exports_none(pricing):
         )
         is None
     )
+
+
+def test_claude_code_daily_and_monthly_metrics(pricing):
+    provider = FakeProvider(
+        Snapshot(usage=[], costs=[], claude_code=[CLAUDE_CODE, OLD_CLAUDE_CODE])
+    )
+    collector = Collector([provider], pricing, lookback_days=2)
+    collector.poll(NOW)
+
+    assert sample("llm_claude_code_sessions", CC_LABELS) == 13.0
+    assert sample("llm_claude_code_lines_of_code", {**CC_LABELS, "type": "added"}) == 120.0
+    assert sample("llm_claude_code_lines_of_code", {**CC_LABELS, "type": "removed"}) == 30.0
+    assert sample("llm_claude_code_commits", CC_LABELS) == 4.0
+    assert sample("llm_claude_code_pull_requests", CC_LABELS) == 1.0
+    assert (
+        sample(
+            "llm_claude_code_tokens",
+            {**CC_LABELS, "model": "claude-sonnet-4-6", "token_type": "input"},
+        )
+        == 540.0
+    )
+    assert sample(
+        "llm_claude_code_estimated_cost_usd", {**CC_LABELS, "model": "claude-sonnet-4-6"}
+    ) == pytest.approx(38.66)
+
+    # Outside the lookback: no daily series, but counts toward the month.
+    assert sample("llm_claude_code_sessions", {**CC_LABELS, "date": "2026-09-01"}) is None
+    assert sample(
+        "llm_claude_code_monthly_estimated_cost_usd",
+        {k: v for k, v in CC_LABELS.items() if k != "date"},
+    ) == pytest.approx(48.66)
+
+
+def test_unknown_claude_code_keeps_previous_records(pricing):
+    provider = FakeProvider(Snapshot(usage=[USAGE], costs=[], claude_code=[CLAUDE_CODE]))
+    collector = Collector([provider], pricing, lookback_days=2)
+    collector.poll(NOW)
+
+    provider.snapshot = Snapshot(usage=[USAGE], costs=[], claude_code=None)
+    up_labels = {"provider": "fake", "account": "default"}
+    errors_before = sample("llm_exporter_poll_errors_total", up_labels) or 0.0
+    collector.poll(NOW)
+
+    assert sample("llm_exporter_up", up_labels) == 1.0
+    assert sample("llm_exporter_poll_errors_total", up_labels) == errors_before + 1
+    assert sample("llm_claude_code_sessions", CC_LABELS) == 13.0
 
 
 def test_multiple_accounts_export_distinct_series(pricing):
